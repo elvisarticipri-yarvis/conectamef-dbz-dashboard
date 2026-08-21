@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONECTAMEF - Dragon Ball Z Operating Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dbOrange: '#FF7700',
+                        dbOrangeGlow: '#FF9900',
+                        dbBlue: '#00D2FF',
+                        dbDarkBlue: '#0A1128',
+                        dbDarkPanel: 'rgba(13, 20, 38, 0.88)',
+                        dbYellow: '#FFD700',
+                        dbRed: '#FF2A2A',
+                        dbGreen: '#00FF66',
+                        dbPurple: '#9D00FF'
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                        teko: ['Teko', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom DBZ Glowing Aesthetics */
+        body {
+            background-color: #050814;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(255, 119, 0, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 80%, rgba(0, 210, 255, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(13, 20, 38, 0.95) 0%, #030611 100%),
+                url('https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #E2E8F0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Shenlong / Ki Watermark Background */
+        .dbz-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 75vw;
+            height: 75vh;
+            background-image: url('https://pngimg.com/uploads/dragonball/dragonball_PNG22.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0;
+            filter: drop-shadow(0 0 20px #FF7700);
+        }
+
+        /* Glassmorphism Panels */
+        .db-card {
+            background: rgba(10, 18, 38, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 210, 255, 0.05);
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .db-card:hover {
+            border-color: rgba(255, 119, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(255, 119, 0, 0.2), inset 0 0 20px rgba(255, 119, 0, 0.1);
+        }
+
+        /* Ki Aura Pulse Animation */
+        @keyframes kiPulse {
+            0% { box-shadow: 0 0 8px rgba(255, 119, 0, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(255, 119, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.5); }
+            100% { box-shadow: 0 0 8px rgba(255, 119, 0, 0.4); }
+        }
+
+        .ki-glow-orange {
+            animation: kiPulse 3s infinite;
+        }
+
+        @keyframes bluePulse {
+            0% { box-shadow: 0 0 8px rgba(0, 210, 255, 0.4); }
+            50% { box-shadow: 0 0 22px rgba(0, 210, 255, 0.9); }
+            100% { box-shadow: 0 0 8px rgba(0, 210, 255, 0.4); }
+        }
+
+        .ki-glow-blue {
+            animation: bluePulse 3s infinite;
+        }
+
+        /* Tab Active Bar */
+        .tab-btn {
+            position: relative;
+            transition: all 0.25s ease;
+        }
+
+        .tab-btn.active {
+            color: #FFD700;
+            background: linear-gradient(180deg, rgba(255, 119, 0, 0.25) 0%, rgba(255, 119, 0, 0.02) 100%);
+            border-bottom: 3px solid #FF7700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+
+        /* Scouter Font Style Headers */
+        .scouter-text {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1.5px;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #080D1A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 4px;
+            border: 1px solid #00D2FF;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FF7700;
+        }
+
+        /* Radar Dot Animation */
+        .radar-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #FF2A2A;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #FF2A2A;
+            animation: radarBlink 1s infinite alternate;
+        }
+
+        @keyframes radarBlink {
+            from { opacity: 0.3; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1.3); }
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col pb-10">
+
+    <!-- Shenlong Background Watermark -->
+    <div class="dbz-watermark"></div>
+
+    <!-- MAIN HEADER BAR -->
+    <header class="sticky top-0 z-50 bg-[#080D1A]/90 backdrop-blur-md border-b border-dbBlue/30 px-4 lg:px-8 py-3">
+        <div class="max-w-[1700px] mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="relative flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-tr from-dbOrange to-dbYellow p-0.5 ki-glow-orange cursor-pointer">
+                    <div class="w-full h-full bg-[#0A1128] rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-dragon text-dbOrange text-2xl animate-pulse"></i>
+                    </div>
+                    <!-- 4 Star Dragon Ball Badge -->
+                    <span class="absolute -top-1 -right-1 bg-dbOrange text-black text-[10px] font-extrabold rounded-full px-1.5 py-0.5 border border-dbYellow shadow">
+                        4★
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-2xl font-black font-orbitron tracking-wider bg-gradient-to-r from-dbYellow via-dbOrange to-dbBlue bg-clip-text text-transparent">
+                            CONECTAMEF
+                        </h1>
+                        <span class="bg-dbOrange/20 border border-dbOrange/60 text-dbOrange text-xs font-bold px-2 py-0.5 rounded font-orbitron">
+                            SAIYAN DASHBOARD
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 font-rajdhani flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-dbGreen inline-block"></span>
+                        Base de Datos Operativa MEF Peru & System Operations
+                    </p>
+                </div>
+            </div>
+
+            <!-- Avatar & DBZ Character Showcase Banner -->
+            <div class="flex items-center space-x-6">
+                <!-- Character Avatar Badges -->
+                <div class="hidden xl:flex items-center space-x-3 bg-dbDarkBlue/80 border border-slate-700/60 rounded-full px-4 py-1.5 shadow-inner">
+                    <div class="flex items-center space-x-2">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Goku" alt="Goku" class="w-8 h-8 rounded-full border border-dbOrange bg-slate-800">
+                        <div>
+                            <p class="text-xs font-bold text-dbYellow leading-none">Goku SSJ</p>
+                            <p class="text-[10px] text-slate-400">Admin General</p>
+                        </div>
+                    </div>
+                    <span class="text-slate-600">|</span>
+                    <div class="flex items-center space-x-2">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Vegeta" alt="Vegeta" class="w-8 h-8 rounded-full border border-dbBlue bg-slate-800">
+                        <div>
+                            <p class="text-xs font-bold text-dbBlue leading-none">Vegeta</p>
+                            <p class="text-[10px] text-slate-400">Supervisor Lead</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clock & System Power Level -->
+                <div class="flex items-center space-x-3 bg-slate-900/80 border border-dbBlue/40 rounded-lg px-3 py-1.5 font-orbitron">
+                    <i class="fa-solid fa-bolt text-dbYellow animate-bounce text-sm"></i>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block leading-none">POWER LEVEL</span>
+                        <span class="text-sm font-bold text-dbGreen" id="powerLevel">9,001 KI</span>
+                    </div>
+                </div>
+
+                <!-- Control Quick Actions -->
+                <button onclick="addNewOITModal()" class="bg-gradient-to-r from-dbOrange to-amber-600 hover:from-amber-600 hover:to-dbOrange text-slate-950 font-bold px-4 py-2 rounded-lg text-sm font-orbitron flex items-center gap-2 transition-all shadow-lg hover:shadow-dbOrange/50">
+                    <i class="fa-solid fa-plus-circle text-base"></i>
+                    <span>NUEVA OIT</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- SEARCH AND FILTER BAR (MATCHING REFERENCE IMAGE 1) -->
+    <section class="max-w-[1700px] mx-auto px-4 lg:px-8 mt-6 z-10 w-full">
+        <div class="db-card p-4 flex flex-wrap items-center gap-3">
+            <!-- Search Input -->
+            <div class="relative flex-1 min-w-[260px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-dbBlue"></i>
+                <input type="text" id="searchInput" oninput="applyFilters()" placeholder="Buscar OIT, distrito, cliente, técnico..." class="w-full bg-slate-900/90 border border-slate-700 focus:border-dbBlue text-sm text-slate-100 rounded-lg pl-9 pr-3 py-2 outline-none font-rajdhani tracking-wide transition">
+            </div>
+
+            <!-- Department Filter -->
+            <select id="filterDepartamento" onchange="applyFilters()" class="bg-slate-900/90 border border-slate-700 focus:border-dbBlue text-sm text-slate-200 rounded-lg px-3 py-2 outline-none cursor-pointer font-rajdhani">
+                <option value="">Todos los departamentos</option>
+            </select>
+
+            <!-- Status Filter -->
+            <select id="filterEstado" onchange="applyFilters()" class="bg-slate-900/90 border border-slate-700 focus:border-dbBlue text-sm text-slate-200 rounded-lg px-3 py-2 outline-none cursor-pointer font-rajdhani">
+                <option value="">Todos los estados</option>
+                <option value="PENDIENTE">PENDIENTE</option>
+                <option value="EN PROCESO">EN PROCESO</option>
+                <option value="COMPLETADO">COMPLETADO</option>
+                <option value="VENCIDO">VENCIDO/URGENTE</option>
+                <option value="STANDBY">STANDBY</option>
+            </select>
+
+            <!-- Technician Filter -->
+            <select id="filterTecnico" onchange="applyFilters()" class="bg-slate-900/90 border border-slate-700 focus:border-dbBlue text-sm text-slate-200 rounded-lg px-3 py-2 outline-none cursor-pointer font-rajdhani">
+                <option value="">Todos los técnicos</option>
+            </select>
+
+            <!-- Date Filter -->
+            <select id="filterFecha" onchange="applyFilters()" class="bg-slate-900/90 border border-slate-700 focus:border-dbBlue text-sm text-slate-200 rounded-lg px-3 py-2 outline-none cursor-pointer font-rajdhani">
+                <option value="">Todas las fechas</option>
+                <option value="esta_semana">Esta Semana</option>
+                <option value="proximos_7_dias">Próximos 7 días</option>
+                <option value="vencidos">Vencidos</option>
+            </select>
+
+            <!-- Clear Button -->
+            <button onclick="clearFilters()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg text-sm font-orbitron transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-xmark text-dbOrange"></i>
+                <span>Limpiar</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- KPI STATS CARDS (REFERENCE IMAGE 1 DESIGN WITH DRAGON BALL COLORS) -->
+    <section class="max-w-[1700px] mx-auto px-4 lg:px-8 mt-5 z-10 w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        
+        <!-- Total Sedes -->
+        <div onclick="filterByState('')" class="db-card p-4 cursor-pointer relative overflow-hidden group border-l-4 border-l-dbBlue">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-3xl font-black font-orbitron text-dbBlue" id="kpiTotalSedes">0</p>
+                    <p class="text-xs font-bold text-slate-400 font-orbitron mt-1">TOTAL SEDES</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-dbBlue/10 flex items-center justify-center text-dbBlue group-hover:scale-110 transition">
+                    <i class="fa-solid fa-satellite-dish text-lg"></i>
+                </div>
+            </div>
+            <div class="absolute -bottom-6 -right-6 w-16 h-16 bg-dbBlue/5 rounded-full blur-md"></div>
+        </div>
+
+        <!-- Pendientes -->
+        <div onclick="filterByState('PENDIENTE')" class="db-card p-4 cursor-pointer relative overflow-hidden group border-l-4 border-l-amber-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-3xl font-black font-orbitron text-amber-400" id="kpiPendientes">0</p>
+                    <p class="text-xs font-bold text-slate-400 font-orbitron mt-1">PENDIENTES</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
+                    <i class="fa-solid fa-hourglass-half text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- En Proceso -->
+        <div onclick="filterByState('EN PROCESO')" class="db-card p-4 cursor-pointer relative overflow-hidden group border-l-4 border-l-dbPurple">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-3xl font-black font-orbitron text-purple-400" id="kpiEnProceso">0</p>
+                    <p class="text-xs font-bold text-slate-400 font-orbitron mt-1">EN PROCESO</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-dbPurple/10 flex items-center justify-center text-purple-400 group-hover:scale-110 transition">
+                    <i class="fa-solid fa-arrows-rotate text-lg group-hover:rotate-180 transition duration-700"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completados -->
+        <div onclick="filterByState('COMPLETADO')" class="db-card p-4 cursor-pointer relative overflow-hidden group border-l-4 border-l-dbGreen">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-3xl font-black font-orbitron text-dbGreen" id="kpiCompletados">0</p>
+                    <p class="text-xs font-bold text-slate-400 font-orbitron mt-1">COMPLETADOS</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-dbGreen/10 flex items-center justify-center text-dbGreen group-hover:scale-110 transition">
+                    <i class="fa-solid fa-[#00FF66] fa-circle-check text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vencidos / Urgentes -->
+        <div onclick="filterByState('VENCIDO')" class="db-card p-4 cursor-pointer relative overflow-hidden group border-l-4 border-l-dbRed">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-3xl font-black font-orbitron text-dbRed" id="kpiVencidos">0</p>
+                    <p class="text-xs font-bold text-slate-400 font-orbitron mt-1">VENCIDOS / URGENTES</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-dbRed/10 flex items-center justify-center text-dbRed group-hover:scale-110 transition">
+                    <i class="fa-solid fa-triangle-exclamation text-lg animate-pulse"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Standby -->
+        <div onclick="filterByState('STANDBY')" class="db-card p-4 cursor-pointer relative overflow-hidden group border-l-4 border-l-emerald-400">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-3xl font-black font-orbitron text-emerald-300" id="kpiStandby">0</p>
+                    <p class="text-xs font-bold text-slate-400 font-orbitron mt-1">STANDBY</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-400/10 flex items-center justify-center text-emerald-300 group-hover:scale-110 transition">
+                    <i class="fa-solid fa-pause text-lg"></i>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- NAVIGATION TABS HEADER -->
+    <nav class="max-w-[1700px] mx-auto px-4 lg:px-8 mt-6 z-10 w-full border-b border-slate-800">
+        <div class="flex space-x-1 overflow-x-auto no-scrollbar pb-1 font-orbitron text-sm">
+            <button onclick="switchTab('tablaTrabajo')" id="nav-tablaTrabajo" class="tab-btn active px-4 py-3 rounded-t-lg font-bold flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-clipboard-list text-dbOrange"></i> Tabla de Trabajos
+            </button>
+            <button onclick="switchTab('alertasProximas')" id="nav-alertasProximas" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-bell text-dbYellow"></i> Alertas Próximas
+                <span class="bg-dbRed text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full hidden" id="alertBadge">0</span>
+            </button>
+            <button onclick="switchTab('sectorizacion')" id="nav-sectorizacion" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-map-location-dot text-dbBlue"></i> Sectorización
+            </button>
+            <button onclick="switchTab('cargaTecnicos')" id="nav-cargaTecnicos" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-user-gear text-purple-400"></i> Carga de Técnicos
+            </button>
+            <button onclick="switchTab('notificaciones')" id="nav-notificaciones" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-paper-plane text-dbGreen"></i> Notificaciones
+            </button>
+            <button onclick="switchTab('programaciones')" id="nav-programaciones" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-calendar-week text-cyan-400"></i> Programaciones
+            </button>
+            <button onclick="switchTab('entregables')" id="nav-entregables" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-box-archive text-amber-400"></i> Entregables
+            </button>
+            <button onclick="switchTab('usuarios')" id="nav-usuarios" class="tab-btn px-4 py-3 rounded-t-lg font-bold text-slate-400 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-users-gear text-pink-400"></i> Usuarios
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT CONTAINERS FOR TABS -->
+    <main class="max-w-[1700px] mx-auto px-4 lg:px-8 mt-6 z-10 w-full flex-grow">
+
+        <!-- 1. TABLA DE TRABAJOS (MAIN TABLE) -->
+        <section id="tab-tablaTrabajo" class="tab-content block">
+            <div class="db-card p-5">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div class="flex items-center space-x-3">
+                        <h2 class="text-xl font-bold font-orbitron text-dbYellow flex items-center gap-2">
+                            <i class="fa-solid fa-table-list text-dbOrange"></i> LISTADO GENERAL DE OITs (CONECTAMEF)
+                        </h2>
+                        <span class="text-xs text-slate-400 font-rajdhani" id="showingCount">Mostrando 0 registros</span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <p class="text-xs text-slate-400 italic">← Desliza horizontalmente para ver la tabla completa →</p>
+                        <button onclick="exportToCSV()" class="bg-slate-800 hover:bg-slate-700 text-dbGreen text-xs font-bold font-orbitron px-3 py-1.5 rounded border border-dbGreen/40 flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> Exportar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
+                    <table class="w-full text-left text-sm text-slate-200">
+                        <thead class="bg-slate-900/90 font-orbitron text-xs text-dbBlue uppercase border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">OIT</th>
+                                <th class="p-3">Sede / Cliente</th>
+                                <th class="p-3">Departamento</th>
+                                <th class="p-3">Distrito</th>
+                                <th class="p-3">Técnico Asignado</th>
+                                <th class="p-3">Fecha Venc.</th>
+                                <th class="p-3 text-center">Estado</th>
+                                <th class="p-3 text-center">Entregables</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaOITsBody" class="divide-y divide-slate-800/60 font-rajdhani text-base">
+                            <!-- Populated dynamically via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. ALERTAS PRÓXIMAS TAB -->
+        <section id="tab-alertasProximas" class="tab-content hidden">
+            <div class="db-card p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold font-orbitron text-dbRed flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation animate-bounce"></i> OITs PRÓXIMAS A VENCER Y VENCIDAS
+                        </h2>
+                        <p class="text-sm text-slate-400">Alarmas críticas de atención prioritaria para técnicos supervisor</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="bg-dbRed/20 border border-dbRed text-dbRed text-xs font-bold px-3 py-1 rounded-full font-orbitron" id="alertCountVencidas">0 VENCIDAS</span>
+                        <span class="bg-amber-500/20 border border-amber-500 text-amber-400 text-xs font-bold px-3 py-1 rounded-full font-orbitron" id="alertCountPorVencer">0 POR VENCER (&lt; 3 días)</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="alertCardsContainer">
+                    <!-- Dynamic Alert Cards -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SECTORIZACIÓN TAB -->
+        <section id="tab-sectorizacion" class="tab-content hidden">
+            <div class="db-card p-6">
+                <h2 class="text-xl font-bold font-orbitron text-dbBlue mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-map-location-dot text-dbOrange"></i> SECTORIZACIÓN POR DEPARTAMENTOS
+                </h2>
+                <p class="text-sm text-slate-400 mb-6">Distribución territorial de OITs asignadas a nivel nacional (Sedes CONECTAMEF)</p>
+
+                <!-- Department Grid Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="sectorGrid">
+                    <!-- Dynamic sector cards -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. CARGA DE TÉCNICOS TAB -->
+        <section id="tab-cargaTecnicos" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Form to Add Technician -->
+                <div class="db-card p-6">
+                    <h2 class="text-lg font-bold font-orbitron text-dbYellow mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-dbOrange"></i> REGISTRAR TÉCNICO
+                    </h2>
+                    <form id="formTecnico" onsubmit="addTechnician(event)" class="space-y-4 font-rajdhani">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Nombre Completo *</label>
+                            <input type="text" id="tecNombre" required placeholder="Ej: Goku Pérez" class="w-full bg-slate-900 border border-slate-700 focus:border-dbOrange rounded-lg p-2.5 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Celular (WhatsApp) *</label>
+                            <input type="text" id="tecCelular" required placeholder="987654321" class="w-full bg-slate-900 border border-slate-700 focus:border-dbOrange rounded-lg p-2.5 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Correo Electrónico *</label>
+                            <input type="email" id="tecCorreo" required placeholder="tecnico@conectamef.gob.pe" class="w-full bg-slate-900 border border-slate-700 focus:border-dbOrange rounded-lg p-2.5 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Especialidad / Nivel Saiyan</label>
+                            <select id="tecEspecialidad" class="w-full bg-slate-900 border border-slate-700 focus:border-dbOrange rounded-lg p-2.5 text-sm text-white outline-none">
+                                <option value="Sedes Fibra / Redes">Sedes Fibra / Redes</option>
+                                <option value="Soporte Cableado Y Equipos">Soporte Cableado Y Equipos</option>
+                                <option value="Mantenimiento General MEF">Mantenimiento General MEF</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-dbOrange to-dbYellow hover:from-dbYellow hover:to-dbOrange text-slate-950 font-bold font-orbitron py-3 rounded-lg shadow-lg hover:shadow-dbOrange/50 transition">
+                            <i class="fa-solid fa-save"></i> GUARDAR TÉCNICO
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Technicians Table -->
+                <div class="db-card p-6 lg:col-span-2">
+                    <h2 class="text-lg font-bold font-orbitron text-dbBlue mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-users text-dbGreen"></i> DIRECTORIO DE TÉCNICOS REGISTRADOS
+                    </h2>
+                    <div class="overflow-x-auto rounded-lg border border-slate-800">
+                        <table class="w-full text-left text-sm text-slate-200">
+                            <thead class="bg-slate-900 font-orbitron text-xs text-dbBlue border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Técnico</th>
+                                    <th class="p-3">Celular / WA</th>
+                                    <th class="p-3">Correo</th>
+                                    <th class="p-3">Especialidad</th>
+                                    <th class="p-3 text-center">OITs Asignadas</th>
+                                    <th class="p-3 text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tecnicosTableBody" class="divide-y divide-slate-800 font-rajdhani text-base">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 5. NOTIFICACIONES TAB -->
+        <section id="tab-notificaciones" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Send Notification Form -->
+                <div class="db-card p-6">
+                    <h2 class="text-lg font-bold font-orbitron text-dbGreen mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane text-dbGreen"></i> ENVIAR AVISO A TÉCNICO
+                    </h2>
+                    <div class="space-y-4 font-rajdhani">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Seleccionar Técnico</label>
+                            <select id="notifTecnico" class="w-full bg-slate-900 border border-slate-700 focus:border-dbGreen rounded-lg p-2.5 text-sm text-white outline-none">
+                                <!-- Options populated JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Seleccionar OIT Relacionada</label>
+                            <select id="notifOIT" class="w-full bg-slate-900 border border-slate-700 focus:border-dbGreen rounded-lg p-2.5 text-sm text-white outline-none">
+                                <!-- Options populated JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Tipo de Notificación</label>
+                            <select id="notifTipo" onchange="updateMessageTemplate()" class="w-full bg-slate-900 border border-slate-700 focus:border-dbGreen rounded-lg p-2.5 text-sm text-white outline-none">
+                                <option value="Asignación OIT">Asignación de Nueva OIT</option>
+                                <option value="Recordatorio Vencimiento">Recordatorio de Vencimiento Próximo</option>
+                                <option value="Urgente / Retraso">Alerta Urgente por Retraso</option>
+                                <option value="Falta Entregables">Recordatorio de Entregables Pendientes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Mensaje del Aviso</label>
+                            <textarea id="notifMensaje" rows="4" class="w-full bg-slate-900 border border-slate-700 focus:border-dbGreen rounded-lg p-2.5 text-sm text-white outline-none" placeholder="Escriba el aviso..."></textarea>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="sendWhatsAppNotif()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold font-orbitron py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-lg transition">
+                                <i class="fa-brands fa-whatsapp text-lg"></i> Enviar WhatsApp
+                            </button>
+                            <button onclick="logNotification()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold font-orbitron px-4 py-2.5 rounded-lg border border-slate-700">
+                                <i class="fa-solid fa-save"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notifications Log -->
+                <div class="db-card p-6 lg:col-span-2">
+                    <h2 class="text-lg font-bold font-orbitron text-dbBlue mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left"></i> HISTORIAL DE NOTIFICACIONES ENVIADAS
+                    </h2>
+                    <div class="overflow-x-auto rounded-lg border border-slate-800">
+                        <table class="w-full text-left text-sm text-slate-200">
+                            <thead class="bg-slate-900 font-orbitron text-xs text-dbBlue border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Fecha/Hora</th>
+                                    <th class="p-3">Técnico</th>
+                                    <th class="p-3">OIT</th>
+                                    <th class="p-3">Tipo</th>
+                                    <th class="p-3">Mensaje</th>
+                                    <th class="p-3 text-center">Canal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="notifHistoryBody" class="divide-y divide-slate-800 font-rajdhani text-base">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 6. PROGRAMACIONES TAB (MATCHING REFERENCE IMAGE 2) -->
+        <section id="tab-programaciones" class="tab-content hidden">
+            <div class="db-card p-6">
+                <!-- Navigation Bar for Week -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div class="flex items-center space-x-2">
+                        <button onclick="changeWeek(-1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-orbitron border border-slate-700">
+                            ◀ Semana anterior
+                        </button>
+                        <span class="text-base font-bold font-orbitron text-dbYellow px-3" id="weekDateRangeDisplay">17 Agosto – 23 Agosto 2026</span>
+                        <button onclick="changeWeek(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded text-xs font-orbitron border border-slate-700">
+                            Semana siguiente ▶
+                        </button>
+                        <button onclick="resetToCurrentWeek()" class="bg-dbBlue/20 text-dbBlue hover:bg-dbBlue hover:text-black font-bold px-3 py-1.5 rounded text-xs font-orbitron border border-dbBlue transition">
+                            <i class="fa-solid fa-calendar-day"></i> Semana actual
+                        </button>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="flex items-center space-x-4 text-xs font-rajdhani font-bold">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-dbBlue"></span> HOY</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-dbGreen"></span> Completado</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-500"></span> En proceso</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-dbRed"></span> Vencido</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-slate-500"></span> Pendiente</span>
+                    </div>
+                </div>
+
+                <!-- Weekly Metric Summary Bar (Image 2 style) -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                    <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-black font-orbitron text-white" id="progTotalSemana">0</p>
+                        <p class="text-[11px] text-slate-400 uppercase font-orbitron">OITs esta semana</p>
+                    </div>
+                    <div class="bg-slate-900/80 border border-dbGreen/30 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-black font-orbitron text-dbGreen" id="progCompletadas">0</p>
+                        <p class="text-[11px] text-slate-400 uppercase font-orbitron">Completadas</p>
+                    </div>
+                    <div class="bg-slate-900/80 border border-amber-500/30 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-black font-orbitron text-amber-400" id="progEnProceso">0</p>
+                        <p class="text-[11px] text-slate-400 uppercase font-orbitron">En proceso</p>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-700 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-black font-orbitron text-slate-300" id="progPendientes">0</p>
+                        <p class="text-[11px] text-slate-400 uppercase font-orbitron">Pendientes</p>
+                    </div>
+                    <div class="bg-slate-900/80 border border-dbRed/30 p-3 rounded-lg text-center">
+                        <p class="text-2xl font-black font-orbitron text-dbRed" id="progSinTecnico">0</p>
+                        <p class="text-[11px] text-slate-400 uppercase font-orbitron">Sin Técnico</p>
+                    </div>
+                </div>
+
+                <!-- 7-Day Weekly Calendar Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-2 mb-8" id="weeklyCalendarGrid">
+                    <!-- Lun 17 to Dom 23 dynamically generated -->
+                </div>
+
+                <!-- Week Details Table Header -->
+                <h3 class="text-lg font-bold font-orbitron text-dbYellow mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-dbOrange"></i> DETALLE DE LA SEMANA
+                </h3>
+
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
+                    <table class="w-full text-left text-sm text-slate-200">
+                        <thead class="bg-slate-900 font-orbitron text-xs text-dbBlue border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Día</th>
+                                <th class="p-3">OIT</th>
+                                <th class="p-3">Distrito</th>
+                                <th class="p-3">Horario</th>
+                                <th class="p-3">Técnico</th>
+                                <th class="p-3">Estado</th>
+                                <th class="p-3">Entregables</th>
+                                <th class="p-3 text-center">Progreso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weekDetailTableBody" class="divide-y divide-slate-800 font-rajdhani text-base">
+                            <!-- Dynamic week details -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 7. ENTREGABLES TAB (MATCHING REFERENCE IMAGE 3) -->
+        <section id="tab-entregables" class="tab-content hidden">
+            <!-- Entregables Header Cards (Image 3 design) -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                <!-- 100% Completos -->
+                <div class="db-card p-4 border-l-4 border-l-dbGreen">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-trophy text-dbYellow text-3xl"></i>
+                        <div>
+                            <p class="text-3xl font-black font-orbitron text-dbGreen" id="entKpiCompletos">0</p>
+                            <p class="text-xs font-bold text-slate-200 font-orbitron">100% COMPLETOS</p>
+                            <p class="text-[10px] text-slate-400" id="entKpiCompletosSub">de 0 OITs totales</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OITs Completadas -->
+                <div class="db-card p-4 border-l-4 border-l-emerald-500">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-[#00FF66] fa-circle-check text-dbGreen text-3xl"></i>
+                        <div>
+                            <p class="text-3xl font-black font-orbitron text-dbGreen" id="entKpiOITsCompletas">0</p>
+                            <p class="text-xs font-bold text-slate-200 font-orbitron">OITS COMPLETADAS</p>
+                            <p class="text-[10px] text-slate-400" id="entKpiOITsCompletasSub">de 0 OITs totales</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Faltan Actas -->
+                <div class="db-card p-4 border-l-4 border-l-dbRed">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-file-circle-xmark text-dbRed text-3xl"></i>
+                        <div>
+                            <p class="text-3xl font-black font-orbitron text-dbRed" id="entKpiFaltanActas">0</p>
+                            <p class="text-xs font-bold text-slate-200 font-orbitron">FALTAN ACTAS</p>
+                            <p class="text-[10px] text-slate-400" id="entKpiFaltanActasSub">de 0 completadas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Faltan Guías -->
+                <div class="db-card p-4 border-l-4 border-l-amber-500">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-clipboard-question text-amber-400 text-3xl"></i>
+                        <div>
+                            <p class="text-3xl font-black font-orbitron text-amber-400" id="entKpiFaltanGuias">0</p>
+                            <p class="text-xs font-bold text-slate-200 font-orbitron">FALTAN GUÍAS</p>
+                            <p class="text-[10px] text-slate-400" id="entKpiFaltanGuiasSub">de 0 completadas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Faltan Informes -->
+                <div class="db-card p-4 border-l-4 border-l-dbPurple">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-file-pen text-purple-400 text-3xl"></i>
+                        <div>
+                            <p class="text-3xl font-black font-orbitron text-purple-400" id="entKpiFaltanInformes">0</p>
+                            <p class="text-xs font-bold text-slate-200 font-orbitron">FALTAN INFORMES</p>
+                            <p class="text-[10px] text-slate-400" id="entKpiFaltanInformesSub">de 0 completadas</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Header Filters for Deliverables -->
+            <div class="db-card p-5">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h3 class="text-base font-bold font-orbitron text-dbYellow flex items-center gap-2">
+                        <i class="fa-solid fa-box-open text-dbOrange"></i> DETALLE DE ENTREGABLES Y % DE AVANCE DOCUMENTARIO
+                    </h3>
+                    
+                    <div class="flex items-center gap-3">
+                        <select id="entFilterTecnico" onchange="renderEntregablesTable()" class="bg-slate-900 border border-slate-700 text-xs text-white rounded px-3 py-1.5 outline-none font-rajdhani">
+                            <option value="">Todos los técnicos</option>
+                        </select>
+                        <select id="entFilterEstadoDoc" onchange="renderEntregablesTable()" class="bg-slate-900 border border-slate-700 text-xs text-white rounded px-3 py-1.5 outline-none font-rajdhani">
+                            <option value="">Todos los porcentajes</option>
+                            <option value="100">100% Completos</option>
+                            <option value="incompleto">Incompletos (&lt; 100%)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
+                    <table class="w-full text-left text-sm text-slate-200">
+                        <thead class="bg-slate-900 font-orbitron text-xs text-dbBlue border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">OIT</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3">Distrito</th>
+                                <th class="p-3">Departamento</th>
+                                <th class="p-3">Técnico</th>
+                                <th class="p-3 text-center">Acta</th>
+                                <th class="p-3 text-center">Guía</th>
+                                <th class="p-3 text-center">Informe</th>
+                                <th class="p-3 text-center">% Avance</th>
+                                <th class="p-3 text-center">Estado OIT</th>
+                                <th class="p-3">Status / Comentario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entregablesTableBody" class="divide-y divide-slate-800 font-rajdhani text-base">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. USUARIOS TAB -->
+        <section id="tab-usuarios" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Add User Form -->
+                <div class="db-card p-6">
+                    <h2 class="text-lg font-bold font-orbitron text-pink-400 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-pink-400"></i> AGREGAR USUARIO AL DASHBOARD
+                    </h2>
+                    <form id="formUsuario" onsubmit="addUser(event)" class="space-y-4 font-rajdhani">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Nombre Completo *</label>
+                            <input type="text" id="usrNombre" required placeholder="Ej: Vegeta Prince" class="w-full bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-lg p-2.5 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Correo Electrónico *</label>
+                            <input type="email" id="usrCorreo" required placeholder="usuario@conectamef.gob.pe" class="w-full bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-lg p-2.5 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Contraseña Inicial *</label>
+                            <input type="password" id="usrPassword" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-lg p-2.5 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Rol de Acceso *</label>
+                            <select id="usrRol" class="w-full bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-lg p-2.5 text-sm text-white outline-none">
+                                <option value="Administrador">Administrador (Acceso Total)</option>
+                                <option value="Supervisor">Supervisor (Edición y Carga)</option>
+                                <option value="Lectura">Lectura (Solo Consulta)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-purple-600 hover:to-pink-600 text-white font-bold font-orbitron py-3 rounded-lg shadow-lg hover:shadow-pink-500/50 transition">
+                            <i class="fa-solid fa-user-check"></i> CREAR USUARIO
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Users List Table -->
+                <div class="db-card p-6 lg:col-span-2">
+                    <h2 class="text-lg font-bold font-orbitron text-dbYellow mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-users-gear text-dbOrange"></i> USUARIOS REGISTRADOS EN EL SISTEMA
+                    </h2>
+                    <div class="overflow-x-auto rounded-lg border border-slate-800">
+                        <table class="w-full text-left text-sm text-slate-200">
+                            <thead class="bg-slate-900 font-orbitron text-xs text-dbBlue border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Usuario</th>
+                                    <th class="p-3">Correo</th>
+                                    <th class="p-3">Rol</th>
+                                    <th class="p-3">Fecha Alta</th>
+                                    <th class="p-3 text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuariosTableBody" class="divide-y divide-slate-800 font-rajdhani text-base">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER DRAGON BALL BANNER -->
+    <footer class="mt-12 border-t border-slate-800/80 py-4 text-center text-xs text-slate-500 font-orbitron">
+        <div class="max-w-[1700px] mx-auto px-4 flex flex-wrap items-center justify-between gap-2">
+            <p>© 2026 CONECTAMEF - Sistema Operativo de Sedes y Trabajos | Saiyan Control Center</p>
+            <div class="flex items-center space-x-4">
+                <span class="text-dbOrange font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-star text-dbYellow"></i> Capsule Corp Tech v4.2
+                </span>
+                <span>Base de Datos Perú MEF</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL: NUEVA / EDITAR OIT -->
+    <div id="modalOIT" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="db-card w-full max-w-2xl p-6 relative border border-dbOrange/50 shadow-2xl">
+            <button onclick="closeModalOIT()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h2 class="text-xl font-bold font-orbitron text-dbYellow mb-4 flex items-center gap-2" id="modalOITTitle">
+                <i class="fa-solid fa-plus-circle text-dbOrange"></i> REGISTRAR NUEVA OIT
+            </h2>
+
+            <form id="formOIT" onsubmit="saveOIT(event)" class="space-y-4 font-rajdhani">
+                <input type="hidden" id="oitIdHidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Número de OIT *</label>
+                        <input type="text" id="oitCodigo" required placeholder="OIT-2026-001" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Cliente / Sede MEF *</label>
+                        <input type="text" id="oitCliente" required placeholder="SEDE CONECTAMEF LIMA" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Departamento *</label>
+                        <select id="oitDepartamento" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                            <option value="LIMA">LIMA</option>
+                            <option value="AREQUIPA">AREQUIPA</option>
+                            <option value="CUSCO">CUSCO</option>
+                            <option value="LA LIBERTAD">LA LIBERTAD</option>
+                            <option value="PIURA">PIURA</option>
+                            <option value="JUNIN">JUNIN</option>
+                            <option value="PUNO">PUNO</option>
+                            <option value="CAJAMARCA">CAJAMARCA</option>
+                            <option value="ANCASH">ANCASH</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Distrito *</label>
+                        <input type="text" id="oitDistrito" required placeholder="Cercado de Lima" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Técnico Asignado</label>
+                        <select id="oitTecnico" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                            <!-- Populated JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Fecha de Vencimiento *</label>
+                        <input type="date" id="oitFechaVenc" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Estado de OIT</label>
+                        <select id="oitEstado" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                            <option value="PENDIENTE">PENDIENTE</option>
+                            <option value="EN PROCESO">EN PROCESO</option>
+                            <option value="COMPLETADO">COMPLETADO</option>
+                            <option value="VENCIDO">VENCIDO</option>
+                            <option value="STANDBY">STANDBY</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 font-orbitron mb-1">Horario / Programación</label>
+                        <input type="text" id="oitHorario" placeholder="09:00 AM - 01:00 PM" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white outline-none focus:border-dbOrange">
+                    </div>
+                </div>
+
+                <!-- Deliverables status in OIT modal -->
+                <div class="border-t border-slate-800 pt-3">
+                    <p class="text-xs font-bold font-orbitron text-dbBlue mb-2">ENTREGABLES REQUERIDOS:</p>
+                    <div class="grid grid-cols-3 gap-3 text-xs font-rajdhani">
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900 p-2 rounded border border-slate-800">
+                            <input type="checkbox" id="checkActa" class="accent-dbOrange"> Acta Conforme
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900 p-2 rounded border border-slate-800">
+                            <input type="checkbox" id="checkGuia" class="accent-dbOrange"> Guía Remisión
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900 p-2 rounded border border-slate-800">
+                            <input type="checkbox" id="checkInforme" class="accent-dbOrange"> Informe Técnico
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeModalOIT()" class="px-4 py-2 bg-slate-800 text-slate-300 font-orbitron text-xs rounded hover:bg-slate-700">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-dbOrange hover:bg-amber-500 text-slate-950 font-bold font-orbitron text-xs rounded shadow-lg">
+                        Guardar OIT
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- DATA STATE (PRE-LOADED WITH REALISTIC CONECTAMEF OIT DATASET) ---
+        let oitsData = [
+            { id: 'OIT-1001', cliente: 'CONECTAMEF LIMA CENTRO', departamento: 'LIMA', distrito: 'Lima', tecnico: 'Goku Pérez', fechaVenc: '2026-08-21', estado: 'PENDIENTE', horario: '09:00 - 12:00', acta: true, guia: false, informe: false, comentario: 'Sede central MEF requerimiento de cableado' },
+            { id: 'OIT-1002', cliente: 'CONECTAMEF AREQUIPA SEDE 1', departamento: 'AREQUIPA', distrito: 'Arequipa', tecnico: 'Vegeta Quispe', fechaVenc: '2026-08-25', estado: 'EN PROCESO', horario: '14:00 - 17:00', acta: true, guia: true, informe: false, comentario: 'Mantenimiento de switches en proceso' },
+            { id: 'OIT-1003', cliente: 'CONECTAMEF CUSCO IMPERIAL', departamento: 'CUSCO', distrito: 'Wanchaq', tecnico: 'Gohan Mamani', fechaVenc: '2026-08-18', estado: 'VENCIDO', horario: '10:00 - 13:00', acta: false, guia: false, informe: false, comentario: 'Urgente revision de fibra óptica' },
+            { id: 'OIT-1004', cliente: 'CONECTAMEF TRUJILLO', departamento: 'LA LIBERTAD', distrito: 'Trujillo', tecnico: 'Piccolo Flores', fechaVenc: '2026-08-22', estado: 'COMPLETADO', horario: '08:30 - 11:30', acta: true, guia: true, informe: true, comentario: 'Entregables 100% liquidados' },
+            { id: 'OIT-1005', cliente: 'CONECTAMEF PIURA NORTE', departamento: 'PIURA', distrito: 'Piura', tecnico: 'Trunks Silva', fechaVenc: '2026-08-28', estado: 'STANDBY', horario: '15:00 - 18:00', acta: false, guia: false, informe: false, comentario: 'En espera de confirmación de acceso de la sede' },
+            { id: 'OIT-1006', cliente: 'CONECTAMEF HYO CENTRO', departamento: 'JUNIN', distrito: 'Huancayo', tecnico: 'Krillin Torres', fechaVenc: '2026-08-20', estado: 'EN PROCESO', horario: '09:00 - 11:00', acta: true, guia: false, informe: false, comentario: 'Revision de gabinetes' },
+            { id: 'OIT-1007', cliente: 'CONECTAMEF PUNO ALTIPLANO', departamento: 'PUNO', distrito: 'Puno', tecnico: 'Goku Pérez', fechaVenc: '2026-08-19', estado: 'VENCIDO', horario: '11:00 - 14:00', acta: true, guia: false, informe: false, comentario: 'Falta enviar informe técnico firmado' },
+            { id: 'OIT-1008', cliente: 'CONECTAMEF CHICLAYO', departamento: 'LAMBAYEQUE', distrito: 'Chiclayo', tecnico: 'Vegeta Quispe', fechaVenc: '2026-08-24', estado: 'PENDIENTE', horario: '10:00 - 12:00', acta: false, guia: false, informe: false, comentario: 'Programado para atención en semana' },
+            { id: 'OIT-1009', cliente: 'CONECTAMEF CAJAMARCA SEDE', departamento: 'CAJAMARCA', distrito: 'Cajamarca', tecnico: 'Gohan Mamani', fechaVenc: '2026-08-23', estado: 'COMPLETADO', horario: '15:00 - 17:00', acta: true, guia: true, informe: true, comentario: 'Trabajo satisfactorio concluido' },
+            { id: 'OIT-1010', cliente: 'CONECTAMEF CALLAO PUERTO', departamento: 'LIMA', distrito: 'Callao', tecnico: 'Piccolo Flores', fechaVenc: '2026-08-21', estado: 'PENDIENTE', horario: '09:30 - 12:30', acta: false, guia: false, informe: false, comentario: 'Inspección de red wireless' }
+        ];
+
+        let tecnicosData = [
+            { id: 1, nombre: 'Goku Pérez', celular: '51987654321', correo: 'goku.perez@conectamef.gob.pe', especialidad: 'Sedes Fibra / Redes' },
+            { id: 2, nombre: 'Vegeta Quispe', celular: '51912345678', correo: 'vegeta.quispe@conectamef.gob.pe', especialidad: 'Soporte Cableado Y Equipos' },
+            { id: 3, nombre: 'Gohan Mamani', celular: '51999888777', correo: 'gohan.mamani@conectamef.gob.pe', especialidad: 'Mantenimiento General MEF' },
+            { id: 4, nombre: 'Piccolo Flores', celular: '51955443322', correo: 'piccolo.flores@conectamef.gob.pe', especialidad: 'Sedes Fibra / Redes' },
+            { id: 5, nombre: 'Trunks Silva', celular: '51966778899', correo: 'trunks.silva@conectamef.gob.pe', especialidad: 'Soporte Cableado Y Equipos' },
+            { id: 6, nombre: 'Krillin Torres', celular: '51944332211', correo: 'krillin.torres@conectamef.gob.pe', especialidad: 'Mantenimiento General MEF' }
+        ];
+
+        let usuariosData = [
+            { id: 1, nombre: 'Goku Son (Admin)', correo: 'admin.goku@conectamef.gob.pe', rol: 'Administrador', fecha: '2026-01-15' },
+            { id: 2, nombre: 'Vegeta Prince (Superv)', correo: 'super.vegeta@conectamef.gob.pe', rol: 'Supervisor', fecha: '2026-02-01' },
+            { id: 3, nombre: 'Bulma Briefs (Lectura)', correo: 'bulma.lectura@conectamef.gob.pe', rol: 'Lectura', fecha: '2026-03-10' }
+        ];
+
+        let notificacionesLog = [
+            { fecha: '2026-08-20 09:15', tecnico: 'Goku Pérez', oit: 'OIT-1001', tipo: 'Asignación OIT', mensaje: 'Se le ha asignado la OIT-1001 en Lima Centro.', canal: 'WhatsApp' },
+            { fecha: '2026-08-19 16:30', tecnico: 'Gohan Mamani', oit: 'OIT-1003', tipo: 'Urgente / Retraso', mensaje: 'ALERTA: OIT-1003 vencida en Cusco.', canal: 'WhatsApp' }
+        ];
+
+        // Global Calendar Week Anchor Date (Aug 20, 2026)
+        let currentCalendarStart = new Date(2026, 7, 17); // Monday Aug 17, 2026
+
+        // Initialize on DOM Ready
+        document.addEventListener('DOMContentLoaded', () => {
+            populateFilterDropdowns();
+            renderAllViews();
+            updatePowerLevel();
+        });
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+
+            const targetBtn = document.getElementById(`nav-${tabId}`);
+            const targetContent = document.getElementById(`tab-${tabId}`);
+
+            if (targetBtn) targetBtn.classList.add('active');
+            if (targetContent) targetContent.classList.remove('hidden');
+
+            // Specific refresh triggers
+            if (tabId === 'programaciones') renderProgramacionesTab();
+            if (tabId === 'entregables') renderEntregablesTable();
+            if (tabId === 'alertasProximas') renderAlertasTab();
+            if (tabId === 'sectorizacion') renderSectorizacionTab();
+        }
+
+        // --- POPULATE DROPDOWNS ---
+        function populateFilterDropdowns() {
+            const deptoSelect = document.getElementById('filterDepartamento');
+            const tecSelect = document.getElementById('filterTecnico');
+            const oitTecSelect = document.getElementById('oitTecnico');
+            const notifTecSelect = document.getElementById('notifTecnico');
+            const entFilterTecSelect = document.getElementById('entFilterTecnico');
+
+            // Departamentos
+            const deptos = [...new Set(oitsData.map(item => item.departamento))].sort();
+            deptoSelect.innerHTML = '<option value="">Todos los departamentos</option>';
+            deptos.forEach(d => {
+                deptoSelect.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+
+            // Technicians
+            const tecOptions = tecSelect ? '<option value="">Todos los técnicos</option>' : '';
+            let tecHTML = tecOptions;
+            tecnicosData.forEach(t => {
+                tecHTML += `<option value="${t.nombre}">${t.nombre}</option>`;
+            });
+
+            if (tecSelect) tecSelect.innerHTML = tecHTML;
+            if (oitTecSelect) oitTecSelect.innerHTML = tecHTML;
+            if (notifTecSelect) notifTecSelect.innerHTML = tecHTML;
+            if (entFilterTecSelect) entFilterTecSelect.innerHTML = '<option value="">Todos los técnicos</option>' + tecnicosData.map(t => `<option value="${t.nombre}">${t.nombre}</option>`).join('');
+
+            // Notif OIT
+            populateNotifOITDropdown();
+        }
+
+        function populateNotifOITDropdown() {
+            const notifOITSelect = document.getElementById('notifOIT');
+            if (!notifOITSelect) return;
+            notifOITSelect.innerHTML = oitsData.map(o => `<option value="${o.id}">${o.id} - ${o.cliente} (${o.departamento})</option>`).join('');
+        }
+
+        // --- RENDER ALL MAIN VIEWS ---
+        function renderAllViews() {
+            calculateKPIs();
+            renderOITsTable();
+            renderTecnicosTable();
+            renderUsuariosTable();
+            renderNotifHistory();
+            renderProgramacionesTab();
+            renderEntregablesTable();
+            renderAlertasTab();
+            renderSectorizacionTab();
+        }
+
+        // Calculate Global KPIs based on current filtered dataset or overall
+        function calculateKPIs() {
+            const total = oitsData.length;
+            const pend = oitsData.filter(d => d.estado === 'PENDIENTE').length;
+            const proc = oitsData.filter(d => d.estado === 'EN PROCESO').length;
+            const comp = oitsData.filter(d => d.estado === 'COMPLETADO').length;
+            const venc = oitsData.filter(d => d.estado === 'VENCIDO').length;
+            const stby = oitsData.filter(d => d.estado === 'STANDBY').length;
+
+            document.getElementById('kpiTotalSedes').innerText = total;
+            document.getElementById('kpiPendientes').innerText = pend;
+            document.getElementById('kpiEnProceso').innerText = proc;
+            document.getElementById('kpiCompletados').innerText = comp;
+            document.getElementById('kpiVencidos').innerText = venc;
+            document.getElementById('kpiStandby').innerText = stby;
+
+            // Alert Badge in Tab Header
+            const alertBadge = document.getElementById('alertBadge');
+            if (venc > 0) {
+                alertBadge.innerText = venc;
+                alertBadge.classList.remove('hidden');
+            } else {
+                alertBadge.classList.add('hidden');
+            }
+        }
+
+        // --- 1. RENDER MAIN TABLE (TABLA DE TRABAJOS) ---
+        function renderOITsTable() {
+            const tbody = document.getElementById('tablaOITsBody');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const depVal = document.getElementById('filterDepartamento').value;
+            const estVal = document.getElementById('filterEstado').value;
+            const tecVal = document.getElementById('filterTecnico').value;
+            const fecVal = document.getElementById('filterFecha').value;
+
+            let filtered = oitsData.filter(item => {
+                const matchesSearch = item.id.toLowerCase().includes(searchVal) ||
+                                      item.cliente.toLowerCase().includes(searchVal) ||
+                                      item.distrito.toLowerCase().includes(searchVal) ||
+                                      item.tecnico.toLowerCase().includes(searchVal);
+                
+                const matchesDep = !depVal || item.departamento === depVal;
+                const matchesEst = !estVal || item.estado === estVal;
+                const matchesTec = !tecVal || item.tecnico === tecVal;
+
+                let matchesFec = true;
+                if (fecVal === 'vencidos') matchesFec = item.estado === 'VENCIDO';
+                // add date logic if needed
+
+                return matchesSearch && matchesDep && matchesEst && matchesTec && matchesFec;
+            });
+
+            document.getElementById('showingCount').innerText = `Mostrando ${filtered.length} de ${oitsData.length} OITs`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-8 text-slate-500 font-orbitron">
+                            <i class="fa-solid fa-radar text-dbOrange text-2xl mb-2 block"></i>
+                            No se encontraron OITs con los filtros seleccionados
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(item => {
+                const badge = getStatusBadgeHTML(item.estado);
+                const entregablesPct = getDeliverablesPct(item);
+                
+                return `
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="p-3 font-bold font-orbitron text-dbYellow">${item.id}</td>
+                        <td class="p-3 font-semibold text-white">${item.cliente}</td>
+                        <td class="p-3"><span class="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded border border-slate-700">${item.departamento}</span></td>
+                        <td class="p-3 text-slate-300">${item.distrito}</td>
+                        <td class="p-3 font-semibold text-dbBlue"><i class="fa-solid fa-user text-xs mr-1"></i>${item.tecnico}</td>
+                        <td class="p-3 text-slate-300">${item.fechaVenc}</td>
+                        <td class="p-3 text-center">${badge}</td>
+                        <td class="p-3 text-center">
+                            <div class="flex items-center justify-center space-x-1 text-xs">
+                                <span title="Acta" class="${item.acta ? 'text-dbGreen' : 'text-slate-600'}"><i class="fa-solid fa-file-check"></i></span>
+                                <span title="Guía" class="${item.guia ? 'text-dbGreen' : 'text-slate-600'}"><i class="fa-solid fa-truck-ram"></i></span>
+                                <span title="Informe" class="${item.informe ? 'text-dbGreen' : 'text-slate-600'}"><i class="fa-solid fa-file-pdf"></i></span>
+                                <span class="ml-1 text-[11px] font-orbitron ${entregablesPct === 100 ? 'text-dbGreen' : 'text-amber-400'}">(${entregablesPct}%)</span>
+                            </div>
+                        </td>
+                        <td class="p-3 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <button onclick="editOITModal('${item.id}')" title="Editar OIT" class="text-dbBlue hover:text-white bg-slate-800 p-1.5 rounded border border-slate-700">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteOIT('${item.id}')" title="Eliminar OIT" class="text-dbRed hover:text-white bg-slate-800 p-1.5 rounded border border-slate-700">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Helper for Status Badges
+        function getStatusBadgeHTML(estado) {
+            switch(estado) {
+                case 'COMPLETADO':
+                    return `<span class="bg-dbGreen/20 border border-dbGreen/60 text-dbGreen text-xs font-bold font-orbitron px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-check"></i> COMPLETADO</span>`;
+                case 'EN PROCESO':
+                    return `<span class="bg-dbPurple/20 border border-dbPurple/60 text-purple-300 text-xs font-bold font-orbitron px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-arrows-rotate animate-spin"></i> EN PROCESO</span>`;
+                case 'VENCIDO':
+                    return `<span class="bg-dbRed/20 border border-dbRed/60 text-dbRed text-xs font-bold font-orbitron px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> VENCIDO</span>`;
+                case 'STANDBY':
+                    return `<span class="bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 text-xs font-bold font-orbitron px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-pause"></i> STANDBY</span>`;
+                default:
+                    return `<span class="bg-amber-500/20 border border-amber-500/60 text-amber-400 text-xs font-bold font-orbitron px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-hourglass-start"></i> PENDIENTE</span>`;
+            }
+        }
+
+        function getDeliverablesPct(item) {
+            let count = 0;
+            if (item.acta) count++;
+            if (item.guia) count++;
+            if (item.informe) count++;
+            return Math.round((count / 3) * 100);
+        }
+
+        // --- FILTER HANDLERS ---
+        function applyFilters() {
+            renderOITsTable();
+        }
+
+        function filterByState(state) {
+            document.getElementById('filterEstado').value = state;
+            applyFilters();
+            switchTab('tablaTrabajo');
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterDepartamento').value = '';
+            document.getElementById('filterEstado').value = '';
+            document.getElementById('filterTecnico').value = '';
+            document.getElementById('filterFecha').value = '';
+            applyFilters();
+        }
+
+        // --- 2. ALERTAS PRÓXIMAS TAB ---
+        function renderAlertasTab() {
+            const container = document.getElementById('alertCardsContainer');
+            const alertOITs = oitsData.filter(item => item.estado === 'VENCIDO' || item.estado === 'PENDIENTE');
+
+            const vencidasCount = oitsData.filter(item => item.estado === 'VENCIDO').length;
+            const porVencerCount = oitsData.filter(item => item.estado === 'PENDIENTE').length;
+
+            document.getElementById('alertCountVencidas').innerText = `${vencidasCount} VENCIDAS`;
+            document.getElementById('alertCountPorVencer').innerText = `${porVencerCount} POR VENCER`;
+
+            if (alertOITs.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400 font-orbitron">
+                        <i class="fa-solid fa-shield-halved text-dbGreen text-4xl mb-3 block"></i>
+                        ¡Sin alarmas críticas activas! Todas las OITs están dentro de plazo.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = alertOITs.map(item => {
+                const isVencida = item.estado === 'VENCIDO';
+                return `
+                    <div class="db-card p-4 border-l-4 ${isVencida ? 'border-l-dbRed' : 'border-l-amber-500'} relative">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold font-orbitron text-dbYellow text-base">${item.id}</span>
+                            ${getStatusBadgeHTML(item.estado)}
+                        </div>
+                        <h4 class="font-bold text-white text-sm leading-snug mb-1">${item.cliente}</h4>
+                        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-location-dot text-dbOrange mr-1"></i>${item.departamento} - ${item.distrito}</p>
+                        
+                        <div class="bg-slate-900/80 p-2 rounded border border-slate-800 text-xs space-y-1 mb-3">
+                            <p class="text-slate-300"><strong>Técnico:</strong> <span class="text-dbBlue font-bold">${item.tecnico}</span></p>
+                            <p class="text-slate-300"><strong>Fecha Vencimiento:</strong> <span class="${isVencida ? 'text-dbRed font-bold animate-pulse' : 'text-amber-400'}">${item.fechaVenc}</span></p>
+                            <p class="text-slate-400 text-[11px] italic">"${item.comentario}"</p>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-1">
+                            <button onclick="prepareNotificationForOIT('${item.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-orbitron px-3 py-1.5 rounded flex items-center gap-1.5">
+                                <i class="fa-brands fa-whatsapp text-sm"></i> Notificar
+                            </button>
+                            <button onclick="editOITModal('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-dbBlue text-xs font-orbitron px-3 py-1.5 rounded border border-slate-700">
+                                Ver / Editar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- 3. SECTORIZACIÓN TAB ---
+        function renderSectorizacionTab() {
+            const grid = document.getElementById('sectorGrid');
+            const deptos = [...new Set(oitsData.map(item => item.departamento))].sort();
+
+            grid.innerHTML = deptos.map(dep => {
+                const list = oitsData.filter(i => i.departamento === dep);
+                const count = list.length;
+                const completadas = list.filter(i => i.estado === 'COMPLETADO').length;
+                const pendientes = list.filter(i => i.estado === 'PENDIENTE' || i.estado === 'EN PROCESO').length;
+                const vencidas = list.filter(i => i.estado === 'VENCIDO').length;
+
+                return `
+                    <div class="db-card p-5 border-t-2 border-t-dbBlue">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold font-orbitron text-lg text-dbYellow flex items-center gap-2">
+                                <i class="fa-solid fa-city text-dbOrange"></i> ${dep}
+                            </h3>
+                            <span class="bg-dbBlue/20 text-dbBlue font-bold font-orbitron text-xs px-2.5 py-1 rounded-full border border-dbBlue/40">${count} Sedes</span>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-slate-900 rounded-full h-2 mb-4 overflow-hidden border border-slate-800 flex">
+                            <div class="bg-dbGreen h-full" style="width: ${(completadas/count)*100}%"></div>
+                            <div class="bg-amber-400 h-full" style="width: ${(pendientes/count)*100}%"></div>
+                            <div class="bg-dbRed h-full" style="width: ${(vencidas/count)*100}%"></div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs font-orbitron mb-3">
+                            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                                <span class="text-dbGreen font-bold block text-sm">${completadas}</span>
+                                <span class="text-[10px] text-slate-400">Listas</span>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                                <span class="text-amber-400 font-bold block text-sm">${pendientes}</span>
+                                <span class="text-[10px] text-slate-400">Curso</span>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded border border-slate-800">
+                                <span class="text-dbRed font-bold block text-sm">${vencidas}</span>
+                                <span class="text-[10px] text-slate-400">Alertas</span>
+                            </div>
+                        </div>
+
+                        <button onclick="filterByDepto('${dep}')" class="w-full bg-slate-800 hover:bg-slate-700 text-dbBlue font-bold font-orbitron text-xs py-2 rounded border border-slate-700">
+                            Filtrar Sedes de ${dep}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterByDepto(dep) {
+            document.getElementById('filterDepartamento').value = dep;
+            applyFilters();
+            switchTab('tablaTrabajo');
+        }
+
+        // --- 4. CARGA DE TÉCNICOS TAB ---
+        function renderTecnicosTable() {
+            const tbody = document.getElementById('tecnicosTableBody');
+            tbody.innerHTML = tecnicosData.map(t => {
+                const assignedCount = oitsData.filter(o => o.tecnico === t.nombre).length;
+                return `
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="p-3 font-bold font-orbitron text-dbYellow flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-dbBlue/20 border border-dbBlue flex items-center justify-center text-dbBlue text-xs">
+                                <i class="fa-solid fa-user-gear"></i>
+                            </div>
+                            ${t.nombre}
+                        </td>
+                        <td class="p-3 text-slate-200">
+                            <a href="https://wa.me/${t.celular}" target="_blank" class="text-dbGreen hover:underline flex items-center gap-1">
+                                <i class="fa-brands fa-whatsapp"></i> +${t.celular}
+                            </a>
+                        </td>
+                        <td class="p-3 text-slate-300 text-sm">${t.correo}</td>
+                        <td class="p-3"><span class="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded border border-slate-700">${t.especialidad}</span></td>
+                        <td class="p-3 text-center"><span class="font-bold font-orbitron text-dbBlue">${assignedCount} OITs</span></td>
+                        <td class="p-3 text-center">
+                            <button onclick="deleteTechnician(${t.id})" class="text-dbRed hover:text-white bg-slate-800 p-1.5 rounded border border-slate-700">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function addTechnician(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('tecNombre').value.trim();
+            const celular = document.getElementById('tecCelular').value.trim();
+            const correo = document.getElementById('tecCorreo').value.trim();
+            const especialidad = document.getElementById('tecEspecialidad').value;
+
+            const newTec = {
+                id: Date.now(),
+                nombre,
+                celular,
+                correo,
+                especialidad
+            };
+
+            tecnicosData.push(newTec);
+            document.getElementById('formTecnico').reset();
+            populateFilterDropdowns();
+            renderTecnicosTable();
+            alert(`Técnico ${nombre} registrado exitosamente.`);
+        }
+
+        function deleteTechnician(id) {
+            if (confirm('¿Eliminar técnico registrado?')) {
+                tecnicosData = tecnicosData.filter(t => t.id !== id);
+                populateFilterDropdowns();
+                renderTecnicosTable();
+            }
+        }
+
+        // --- 5. NOTIFICACIONES TAB ---
+        function updateMessageTemplate() {
+            const tipo = document.getElementById('notifTipo').value;
+            const oitId = document.getElementById('notifOIT').value;
+            const tec = document.getElementById('notifTecnico').value;
+            const textarea = document.getElementById('notifMensaje');
+
+            switch(tipo) {
+                case 'Asignación OIT':
+                    textarea.value = `Hola ${tec}, se te ha asignado la OIT ${oitId} para la atención de la sede CONECTAMEF. Por favor revisar en el dashboard.`;
+                    break;
+                case 'Recordatorio Vencimiento':
+                    textarea.value = `RECORDATORIO: La OIT ${oitId} tiene fecha de vencimiento próxima. Favor confirmar estado de entregables.`;
+                    break;
+                case 'Urgente / Retraso':
+                    textarea.value = `URGENTE: La OIT ${oitId} se encuentra VENCIDA / RETRASADA. Requerimos respuesta inmediata sobre el estatus.`;
+                    break;
+                case 'Falta Entregables':
+                    textarea.value = `Estimado ${tec}, faltan regularizar los entregables (Acta/Guía/Informe) de la OIT ${oitId}. Favor subirlos a la brevedad.`;
+                    break;
+            }
+        }
+
+        function prepareNotificationForOIT(oitId) {
+            switchTab('notificaciones');
+            const oit = oitsData.find(o => o.id === oitId);
+            if (oit) {
+                document.getElementById('notifOIT').value = oit.id;
+                document.getElementById('notifTecnico').value = oit.tecnico;
+                updateMessageTemplate();
+            }
+        }
+
+        function sendWhatsAppNotif() {
+            const tecNombre = document.getElementById('notifTecnico').value;
+            const tec = tecnicosData.find(t => t.nombre === tecNombre);
+            const mensaje = encodeURIComponent(document.getElementById('notifMensaje').value);
+
+            if (!tec || !tec.celular) {
+                alert('Técnico seleccionado no tiene número de celular registrado.');
+                return;
+            }
+
+            logNotification();
+            window.open(`https://wa.me/${tec.celular}?text=${mensaje}`, '_blank');
+        }
+
+        function logNotification() {
+            const tec = document.getElementById('notifTecnico').value;
+            const oit = document.getElementById('notifOIT').value;
+            const tipo = document.getElementById('notifTipo').value;
+            const mensaje = document.getElementById('notifMensaje').value;
+
+            const logItem = {
+                fecha: new Date().toLocaleString(),
+                tecnico: tec,
+                oit: oit,
+                tipo: tipo,
+                mensaje: mensaje,
+                canal: 'WhatsApp'
+            };
+
+            notificacionesLog.unshift(logItem);
+            renderNotifHistory();
+        }
+
+        function renderNotifHistory() {
+            const tbody = document.getElementById('notifHistoryBody');
+            tbody.innerHTML = notificacionesLog.map(n => `
+                <tr class="hover:bg-slate-900/60 transition text-xs">
+                    <td class="p-3 text-slate-400">${n.fecha}</td>
+                    <td class="p-3 font-bold text-dbYellow">${n.tecnico}</td>
+                    <td class="p-3 font-bold text-dbBlue">${n.oit}</td>
+                    <td class="p-3"><span class="bg-slate-800 text-slate-200 px-2 py-0.5 rounded border border-slate-700">${n.tipo}</span></td>
+                    <td class="p-3 text-slate-300 max-w-xs truncate">${n.mensaje}</td>
+                    <td class="p-3 text-center"><span class="text-dbGreen font-bold"><i class="fa-brands fa-whatsapp"></i> ${n.canal}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // --- 6. PROGRAMACIONES TAB (MATCHING REFERENCE IMAGE 2) ---
+        function renderProgramacionesTab() {
+            // Render 7-day grid starting Monday
+            const calendarGrid = document.getElementById('weeklyCalendarGrid');
+            const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+            // Calculate date range strings
+            const startDate = new Date(currentCalendarStart);
+            const endDate = new Date(currentCalendarStart);
+            endDate.setDate(startDate.getDate() + 6);
+
+            const options = { day: 'numeric', month: 'Long', year: 'numeric' };
+            document.getElementById('weekDateRangeDisplay').innerText = 
+                `${startDate.getDate()} ${startDate.toLocaleString('es-ES', { month: 'short' })} – ${endDate.getDate()} ${endDate.toLocaleString('es-ES', { month: 'short' })} ${endDate.getFullYear()}`;
+
+            let gridHTML = '';
+            for (let i = 0; i < 7; i++) {
+                const dayDate = new Date(startDate);
+                dayDate.setDate(startDate.getDate() + i);
+
+                const isToday = i === 3; // Mocking current day Thursday 20 Aug 2026 as per context
+                const dayNum = dayDate.getDate();
+                const dayLabel = `${dayNames[i]} ${dayNum}`;
+
+                // Filter OITs for this day
+                const oitsForDay = oitsData.filter((_, idx) => idx % 7 === i);
+
+                gridHTML += `
+                    <div class="db-card p-3 min-h-[140px] flex flex-col justify-between ${isToday ? 'border-2 border-dbBlue bg-dbBlue/10 shadow-lg ki-glow-blue' : ''}">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+                                <span class="font-bold font-orbitron text-xs ${isToday ? 'text-dbBlue font-extrabold' : 'text-slate-300'}">${dayLabel}</span>
+                                ${isToday ? '<span class="bg-dbBlue text-black text-[9px] font-extrabold px-1 rounded">HOY</span>' : ''}
+                            </div>
+                            
+                            <div class="space-y-1.5">
+                                ${oitsForDay.length === 0 ? '<p class="text-[11px] text-slate-600 italic py-2 text-center">Sin OITs</p>' : ''}
+                                ${oitsForDay.map(o => `
+                                    <div class="bg-slate-900/90 p-1.5 rounded border border-slate-800 text-[11px] leading-tight">
+                                        <div class="flex justify-between font-bold text-dbYellow">
+                                            <span>${o.id}</span>
+                                            <span class="text-[10px] text-dbBlue">${o.horario}</span>
+                                        </div>
+                                        <p class="text-slate-300 truncate">${o.distrito}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="text-[10px] text-slate-500 font-orbitron text-right pt-2">
+                            ${oitsForDay.length} OITs
+                        </div>
+                    </div>
+                `;
+            }
+
+            calendarGrid.innerHTML = gridHTML;
+
+            // Render Metrics Bar
+            const progTotalSemana = oitsData.length;
+            const progCompletadas = oitsData.filter(o => o.estado === 'COMPLETADO').length;
+            const progEnProceso = oitsData.filter(o => o.estado === 'EN PROCESO').length;
+            const progPendientes = oitsData.filter(o => o.estado === 'PENDIENTE').length;
+
+            document.getElementById('progTotalSemana').innerText = progTotalSemana;
+            document.getElementById('progCompletadas').innerText = progCompletadas;
+            document.getElementById('progEnProceso').innerText = progEnProceso;
+            document.getElementById('progPendientes').innerText = progPendientes;
+            document.getElementById('progSinTecnico').innerText = '0';
+
+            // Render Week Detail Table
+            const tbody = document.getElementById('weekDetailTableBody');
+            tbody.innerHTML = oitsData.map((item, idx) => {
+                const dayName = dayNames[idx % 7] + ' ' + (17 + (idx % 7));
+                const pct = getDeliverablesPct(item);
+                return `
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="p-3 font-bold font-orbitron text-slate-300 text-xs">${dayName}</td>
+                        <td class="p-3 font-bold font-orbitron text-dbYellow">${item.id}</td>
+                        <td class="p-3 text-slate-300">${item.distrito}</td>
+                        <td class="p-3 font-semibold text-dbBlue">${item.horario}</td>
+                        <td class="p-3 text-slate-200">${item.tecnico}</td>
+                        <td class="p-3 text-center">${getStatusBadgeHTML(item.estado)}</td>
+                        <td class="p-3 text-center">
+                            <span class="text-xs ${pct === 100 ? 'text-dbGreen font-bold' : 'text-amber-400'}">${pct}% Completo</span>
+                        </td>
+                        <td class="p-3">
+                            <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-800 overflow-hidden">
+                                <div class="bg-dbOrange h-full" style="width: ${pct}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function changeWeek(offset) {
+            currentCalendarStart.setDate(currentCalendarStart.getDate() + (offset * 7));
+            renderProgramacionesTab();
+        }
+
+        function resetToCurrentWeek() {
+            currentCalendarStart = new Date(2026, 7, 17);
+            renderProgramacionesTab();
+        }
+
+        // --- 7. ENTREGABLES TAB (MATCHING REFERENCE IMAGE 3) ---
+        function renderEntregablesTable() {
+            const tecFilter = document.getElementById('entFilterTecnico').value;
+            const pctFilter = document.getElementById('entFilterEstadoDoc').value;
+
+            let list = oitsData.filter(item => {
+                const matchesTec = !tecFilter || item.tecnico === tecFilter;
+                const pct = getDeliverablesPct(item);
+                let matchesPct = true;
+                if (pctFilter === '100') matchesPct = pct === 100;
+                if (pctFilter === 'incompleto') matchesPct = pct < 100;
+                return matchesTec && matchesPct;
+            });
+
+            // Update Header Metrics (Exact Match to Image 3)
+            const total = oitsData.length;
+            const completas100 = oitsData.filter(o => getDeliverablesPct(o) === 100).length;
+            const oitsCompletadas = oitsData.filter(o => o.estado === 'COMPLETADO').length;
+            const faltanActas = oitsData.filter(o => !o.acta).length;
+            const faltanGuias = oitsData.filter(o => !o.guia).length;
+            const faltanInformes = oitsData.filter(o => !o.informe).length;
+
+            document.getElementById('entKpiCompletos').innerText = completas100;
+            document.getElementById('entKpiCompletosSub').innerText = `de ${total} OITs totales`;
+
+            document.getElementById('entKpiOITsCompletas').innerText = oitsCompletadas;
+            document.getElementById('entKpiOITsCompletasSub').innerText = `de ${total} OITs totales`;
+
+            document.getElementById('entKpiFaltanActas').innerText = faltanActas;
+            document.getElementById('entKpiFaltanActasSub').innerText = `de ${total} OITs totales`;
+
+            document.getElementById('entKpiFaltanGuias').innerText = faltanGuias;
+            document.getElementById('entKpiFaltanGuiasSub').innerText = `de ${total} OITs totales`;
+
+            document.getElementById('entKpiFaltanInformes').innerText = faltanInformes;
+            document.getElementById('entKpiFaltanInformesSub').innerText = `de ${total} OITs totales`;
+
+            // Render Table Rows
+            const tbody = document.getElementById('entregablesTableBody');
+            tbody.innerHTML = list.map(item => {
+                const pct = getDeliverablesPct(item);
+                return `
+                    <tr class="hover:bg-slate-900/60 transition">
+                        <td class="p-3 font-bold font-orbitron text-dbYellow">${item.id}</td>
+                        <td class="p-3 text-slate-200 font-semibold">${item.cliente}</td>
+                        <td class="p-3 text-slate-300">${item.distrito}</td>
+                        <td class="p-3 text-slate-300">${item.departamento}</td>
+                        <td class="p-3 font-semibold text-dbBlue">${item.tecnico}</td>
+                        
+                        <!-- Checkbox icons for deliverables -->
+                        <td class="p-3 text-center">
+                            <i class="fa-solid ${item.acta ? 'fa-square-check text-dbGreen text-lg' : 'fa-square-xmark text-dbRed text-lg'}"></i>
+                        </td>
+                        <td class="p-3 text-center">
+                            <i class="fa-solid ${item.guia ? 'fa-square-check text-dbGreen text-lg' : 'fa-square-xmark text-dbRed text-lg'}"></i>
+                        </td>
+                        <td class="p-3 text-center">
+                            <i class="fa-solid ${item.informe ? 'fa-square-check text-dbGreen text-lg' : 'fa-square-xmark text-dbRed text-lg'}"></i>
+                        </td>
+                        <td class="p-3 text-center">
+                            <span class="font-bold font-orbitron text-sm ${pct === 100 ? 'text-dbGreen' : 'text-amber-400'}">${pct}%</span>
+                        </td>
+                        <td class="p-3 text-center">${getStatusBadgeHTML(item.estado)}</td>
+                        <td class="p-3 text-slate-300 text-xs italic">${item.comentario}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- 8. USUARIOS TAB ---
+        function renderUsuariosTable() {
+            const tbody = document.getElementById('usuariosTableBody');
+            tbody.innerHTML = usuariosData.map(u => `
+                <tr class="hover:bg-slate-900/60 transition">
+                    <td class="p-3 font-bold font-orbitron text-dbYellow flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-full bg-pink-500/20 border border-pink-500 flex items-center justify-center text-pink-400 text-xs">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                        ${u.nombre}
+                    </td>
+                    <td class="p-3 text-slate-300 text-sm">${u.correo}</td>
+                    <td class="p-3">
+                        <span class="px-2.5 py-0.5 rounded text-xs font-bold font-orbitron ${
+                            u.rol === 'Administrador' ? 'bg-dbOrange/20 border border-dbOrange text-dbOrange' :
+                            u.rol === 'Supervisor' ? 'bg-dbBlue/20 border border-dbBlue text-dbBlue' :
+                            'bg-slate-800 border border-slate-700 text-slate-300'
+                        }">${u.rol}</span>
+                    </td>
+                    <td class="p-3 text-slate-400 text-xs">${u.fecha}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteUser(${u.id})" class="text-dbRed hover:text-white bg-slate-800 p-1.5 rounded border border-slate-700">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addUser(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('usrNombre').value.trim();
+            const correo = document.getElementById('usrCorreo').value.trim();
+            const rol = document.getElementById('usrRol').value;
+
+            const newUsr = {
+                id: Date.now(),
+                nombre,
+                correo,
+                rol,
+                fecha: new Date().toISOString().split('T')[0]
+            };
+
+            usuariosData.push(newUsr);
+            document.getElementById('formUsuario').reset();
+            renderUsuariosTable();
+            alert(`Usuario ${nombre} agregado con rol ${rol}.`);
+        }
+
+        function deleteUser(id) {
+            if (confirm('¿Eliminar este usuario del sistema?')) {
+                usuariosData = usuariosData.filter(u => u.id !== id);
+                renderUsuariosTable();
+            }
+        }
+
+        // --- OIT MODAL FUNCTIONS ---
+        function addNewOITModal() {
+            document.getElementById('modalOITTitle').innerHTML = `<i class="fa-solid fa-plus-circle text-dbOrange"></i> REGISTRAR NUEVA OIT`;
+            document.getElementById('formOIT').reset();
+            document.getElementById('oitIdHidden').value = '';
+            document.getElementById('modalOIT').classList.remove('hidden');
+        }
+
+        function editOITModal(id) {
+            const item = oitsData.find(o => o.id === id);
+            if (!item) return;
+
+            document.getElementById('modalOITTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-dbBlue"></i> EDITAR ${item.id}`;
+            document.getElementById('oitIdHidden').value = item.id;
+            document.getElementById('oitCodigo').value = item.id;
+            document.getElementById('oitCliente').value = item.cliente;
+            document.getElementById('oitDepartamento').value = item.departamento;
+            document.getElementById('oitDistrito').value = item.distrito;
+            document.getElementById('oitTecnico').value = item.tecnico;
+            document.getElementById('oitFechaVenc').value = item.fechaVenc;
+            document.getElementById('oitEstado').value = item.estado;
+            document.getElementById('oitHorario').value = item.horario;
+
+            document.getElementById('checkActa').checked = item.acta;
+            document.getElementById('checkGuia').checked = item.guia;
+            document.getElementById('checkInforme').checked = item.informe;
+
+            document.getElementById('modalOIT').classList.remove('hidden');
+        }
+
+        function closeModalOIT() {
+            document.getElementById('modalOIT').classList.add('hidden');
+        }
+
+        function saveOIT(e) {
+            e.preventDefault();
+            const hiddenId = document.getElementById('oitIdHidden').value;
+            const codigo = document.getElementById('oitCodigo').value.trim();
+            const cliente = document.getElementById('oitCliente').value.trim();
+            const departamento = document.getElementById('oitDepartamento').value;
+            const distrito = document.getElementById('oitDistrito').value.trim();
+            const tecnico = document.getElementById('oitTecnico').value;
+            const fechaVenc = document.getElementById('oitFechaVenc').value;
+            const estado = document.getElementById('oitEstado').value;
+            const horario = document.getElementById('oitHorario').value || '09:00 - 13:00';
+
+            const acta = document.getElementById('checkActa').checked;
+            const guia = document.getElementById('checkGuia').checked;
+            const informe = document.getElementById('checkInforme').checked;
+
+            if (hiddenId) {
+                // Edit existing
+                const index = oitsData.findIndex(o => o.id === hiddenId);
+                if (index !== -1) {
+                    oitsData[index] = { ...oitsData[index], id: codigo, cliente, departamento, distrito, tecnico, fechaVenc, estado, horario, acta, guia, informe };
+                }
+            } else {
+                // Create new
+                oitsData.push({
+                    id: codigo,
+                    cliente,
+                    departamento,
+                    distrito,
+                    tecnico,
+                    fechaVenc,
+                    estado,
+                    horario,
+                    acta,
+                    guia,
+                    informe,
+                    comentario: 'Registrado desde panel Saiyan'
+                });
+            }
+
+            closeModalOIT();
+            populateFilterDropdowns();
+            renderAllViews();
+        }
+
+        function deleteOIT(id) {
+            if (confirm(`¿Está seguro de eliminar la OIT ${id}?`)) {
+                oitsData = oitsData.filter(o => o.id !== id);
+                renderAllViews();
+            }
+        }
+
+        // --- EXPORT TO CSV ---
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,OIT,Cliente,Departamento,Distrito,Tecnico,FechaVenc,Estado,Acta,Guia,Informe\n";
+            oitsData.forEach(o => {
+                csvContent += `${o.id},"${o.cliente}",${o.departamento},${o.distrito},"${o.tecnico}",${o.fechaVenc},${o.estado},${o.acta},${o.guia},${o.informe}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "CONECTAMEF_Base_De_Datos.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Animate DBZ Power Level Counter
+        function updatePowerLevel() {
+            let pl = 9000;
+            setInterval(() => {
+                pl = Math.floor(Math.random() * 500) + 9000;
+                document.getElementById('powerLevel').innerText = pl.toLocaleString() + ' KI';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+```
+
+Your interactive **CONECTAMEF Dragon Ball Z Operating Dashboard** web application is ready! Feel free to open it in any modern browser to explore all tabs, live filters, weekly scheduling grid, deliverable progress metrics, WhatsApp technician messaging, and user management.
