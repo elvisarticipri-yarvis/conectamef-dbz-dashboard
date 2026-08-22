@@ -1435,9 +1435,97 @@
     function updateRowTech(id, val) {
       const item = oits.find(o => o.id === id);
       if (item) {
+        const prevTecnico = item.tecnico;
         item.tecnico = val;
         saveOits();
         renderEntregablesTable();
+        // Solo se dispara la notificación cuando se asigna un técnico nuevo
+        // (no cuando se limpia la asignación ni si no hubo cambio real).
+        if (val && val.trim() !== '' && val !== prevTecnico) {
+          sendAssignmentNotifications(item);
+        }
+      }
+    }
+
+    // Al asignar un técnico a una OIT: abre automáticamente 2 correos (mailto)
+    // con distinto asunto/contenido y una notificación de WhatsApp al técnico.
+    // NOTA: el navegador puede bloquear estas ventanas si no permite pop-ups
+    // para este archivo/sitio; hay que autorizarlos la primera vez.
+    function sendAssignmentNotifications(item) {
+      const tech = tecnicos.find(t => t.nombre === item.tecnico);
+      if (!tech) return;
+
+      const fechaStr = formatDateDMY(item.fecha);
+      const ubicacion = `${item.distrito}, ${item.departamento}`;
+      const coords = item.coordenadas || 'N/A';
+
+      if (tech.email) {
+        // Correo 1: Solicitud de Servicio
+        const subject1 = encodeURIComponent(`Solicitud de Servicio - OIT ${item.oit}`);
+        const body1 = encodeURIComponent(
+`Estimado(a) ${tech.nombre},
+
+Se solicita la ejecución del servicio de ${item.servicio} correspondiente a la siguiente Orden de Instalación de Trabajo (OIT):
+
+OIT: ${item.oit}
+Sede: ${item.sede} (${item.tipo})
+Servicio: ${item.servicio}
+Dirección: ${item.direccion}
+Ubicación: ${ubicacion}
+Fecha Agendada: ${fechaStr}
+Coordenadas: ${coords}
+
+Por favor confirmar la recepción de esta solicitud a la brevedad.
+
+Saludos,
+CONECTAMEF - Control Operativo`
+        );
+        window.open(`mailto:${tech.email}?subject=${subject1}&body=${body1}`, '_blank');
+
+        // Correo 2: Asignación de OIT
+        const subject2 = encodeURIComponent(`Asignación de OIT ${item.oit} - ${tech.nombre}`);
+        const body2 = encodeURIComponent(
+`Estimado(a) ${tech.nombre},
+
+Se le asigna oficialmente la siguiente Orden de Instalación de Trabajo (OIT) para su ejecución:
+
+OIT: ${item.oit}
+Sede: ${item.sede} (${item.tipo})
+Servicio: ${item.servicio}
+Dirección: ${item.direccion}
+Ubicación: ${ubicacion}
+Fecha Agendada: ${fechaStr}
+Coordenadas: ${coords}
+
+Recuerde presentar los entregables correspondientes (Acta, Guía de Instalación, Informe) al finalizar el trabajo.
+
+Cualquier consulta, comunicarse con el área de Control Operativo CONECTAMEF.
+
+Saludos,
+CONECTAMEF - Control Operativo`
+        );
+        window.open(`mailto:${tech.email}?subject=${subject2}&body=${body2}`, '_blank');
+      } else {
+        console.warn(`Técnico ${tech.nombre} no tiene correo registrado; no se enviaron los correos.`);
+      }
+
+      if (tech.phone) {
+        const phoneDigits = tech.phone.replace(/[^0-9]/g, '');
+        const waText = encodeURIComponent(
+`⚡ CONECTAMEF NOTIFICACIÓN DE TRABAJO ⚡
+-----------------------------------------
+OIT: ${item.oit}
+Sede: ${item.sede} (${item.tipo})
+Servicio: ${item.servicio}
+Dirección: ${item.direccion}
+Ubicación: ${ubicacion}
+Fecha Agendada: ${fechaStr}
+Estado: ${item.estado}
+Coordenadas: ${coords}`
+        );
+        window.open(`https://api.whatsapp.com/send?phone=${phoneDigits}&text=${waText}`, '_blank');
+      } else {
+        console.warn(`Técnico ${tech.nombre} no tiene teléfono registrado; no se envió el WhatsApp.`);
       }
     }
 
