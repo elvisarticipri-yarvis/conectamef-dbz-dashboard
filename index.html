@@ -1411,12 +1411,13 @@
     // 2) Mientras tengan el valor "TU_API_KEY", el dashboard sigue funcionando
     //    100% en modo local (localStorage), sin conectarse a Firebase ni Firestore.
     const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_PROYECTO.firebaseapp.com",
-      projectId: "TU_PROYECTO",
-      storageBucket: "TU_PROYECTO.appspot.com",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
+      apiKey: "AIzaSyCewaSHLp6VzHFNqNDzAPJymAvgU_fq6BM",
+      authDomain: "conectamef.firebaseapp.com",
+      projectId: "conectamef",
+      storageBucket: "conectamef.firebasestorage.app",
+      messagingSenderId: "1039990883864",
+      appId: "1:1039990883864:web:f2b1aed169cff2887e256d",
+      measurementId: "G-KV2D6XJC9N"
     };
 
     const FIREBASE_CONFIGURED = !!(firebaseConfig.apiKey && firebaseConfig.apiKey !== 'TU_API_KEY');
@@ -1582,9 +1583,13 @@
       }
       const elFbDetail = document.getElementById('config-firebase-detail');
       if (elFbDetail) {
-        elFbDetail.innerHTML = isFirebaseReady()
-          ? `<span class="config-status-ok">Conectado al proyecto "${firebaseConfig.projectId}".</span>`
-          : `<span class="config-status-warn">firebaseConfig todavía tiene valores de ejemplo (TU_API_KEY...).</span>`;
+        if (isFirebaseReady()) {
+          elFbDetail.innerHTML = `<span class="config-status-ok">Conectado al proyecto "${firebaseConfig.projectId}".</span>`;
+        } else if (!FIREBASE_CONFIGURED) {
+          elFbDetail.innerHTML = `<span class="config-status-warn">firebaseConfig todavía tiene valores de ejemplo (TU_API_KEY...).</span>`;
+        } else {
+          elFbDetail.innerHTML = `<span class="config-status-bad">firebaseConfig tiene valores del proyecto "${firebaseConfig.projectId}", pero el SDK de Firebase no cargó (revisa tu conexión a internet, un bloqueador de anuncios, o abre este archivo desde un servidor/GitHub Pages en vez de abrirlo directo desde el disco).</span>`;
+        }
       }
 
       const url = localStorage.getItem('APPS_SCRIPT_URL');
