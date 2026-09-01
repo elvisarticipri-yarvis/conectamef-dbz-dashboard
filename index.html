@@ -807,8 +807,8 @@
 
     .week-days-grid {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
       margin-bottom: 20px;
     }
 
@@ -816,27 +816,65 @@
       background: rgba(10, 18, 38, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 8px;
-      padding: 10px;
-      min-height: 140px;
+      padding: 14px;
+      min-height: 260px;
     }
 
     .day-header {
       font-family: 'Orbitron', sans-serif;
-      font-size: 0.85rem;
+      font-size: 1rem;
       color: var(--dbz-yellow);
       text-align: center;
-      padding-bottom: 6px;
+      padding-bottom: 8px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .schedule-pill {
       background: rgba(255, 111, 0, 0.15);
       border-left: 3px solid var(--dbz-orange);
-      padding: 6px 8px;
+      padding: 8px 10px;
       border-radius: 4px;
-      font-size: 0.78rem;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .schedule-pill-btn {
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      color: var(--dbz-blue);
+      border-radius: 5px;
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    .schedule-pill-btn:hover {
+      background: rgba(0, 229, 255, 0.3);
+    }
+
+    .schedule-pill-btn.has-content {
+      background: rgba(0, 230, 118, 0.2);
+      border-color: var(--dbz-green);
+      color: var(--dbz-green);
+    }
+
+    .doc-adjunto-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #060b18;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 6px 10px;
       margin-bottom: 6px;
+      font-size: 0.82rem;
     }
   </style>
 </head>
@@ -1430,6 +1468,34 @@
     </div>
   </div>
 
+  <!-- MODAL DOCUMENTOS Y COMENTARIO PARA EL TÉCNICO (pestaña Programaciones) -->
+  <div class="modal-backdrop" id="modal-programacion-docs">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-paperclip"></i> DOCUMENTOS PARA EL TÉCNICO <span id="modal-prog-oit-title" style="color: #fff;"></span></h3>
+        <i class="fa-solid fa-xmark" style="cursor: pointer; font-size: 1.2rem;" onclick="closeModal('modal-programacion-docs')"></i>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="prog-docs-oit-id">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Lo que cargues aquí se envía junto con el correo de "Asignación de OIT" cuando se agende un técnico para esta OIT.</p>
+        <div class="form-group">
+          <label>Comentario para el técnico</label>
+          <textarea id="prog-comentario-texto" class="form-control" rows="4" placeholder="Instrucciones u observaciones para el técnico..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Documentos adjuntos</label>
+          <div id="prog-docs-lista" style="margin-bottom: 10px;"></div>
+          <input type="file" id="prog-docs-input" class="form-control" multiple onchange="agregarDocumentoProgramacion(this.files)">
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">Los archivos se guardan en el navegador (localStorage): usa archivos pequeños (idealmente menos de 1-2 MB cada uno).</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-dbz btn-dbz-secondary" onclick="closeModal('modal-programacion-docs')">Cancelar</button>
+        <button class="btn-dbz" onclick="guardarProgramacionDocs()"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bandeja de notificaciones (reemplaza al alert() nativo) -->
   <div id="toast-tray"></div>
 
@@ -1990,7 +2056,9 @@
             fechaFormateada: formatDateDMY(item.fecha),
             horario: item.horario || '',
             coordenadas: item.coordenadas || '',
-            direccion: item.direccion || ''
+            direccion: item.direccion || '',
+            comentarioProgramacion: item.comentarioProgramacion || '',
+            documentosProgramacion: item.documentosProgramacion || []
           })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2013,13 +2081,18 @@
     // para el envío automático por CallMeBot como para el link manual de WhatsApp Web).
     function construirMensajeWhatsAppOit(item, tech) {
       const linkUbicacion = construirLinkUbicacion(item);
+      const comentario = (item.comentarioProgramacion || '').trim();
+      const numDocs = (item.documentosProgramacion || []).length;
+      let extra = '';
+      if (comentario) extra += `\nComentario: ${comentario}`;
+      if (numDocs > 0) extra += `\nDocumentos: se enviaron ${numDocs} adjunto(s) por correo.`;
       return `CONECTAMEF - Asignación de Nueva OIT
 Técnico: ${tech.nombre}
 OIT: ${item.oit}
 Sede: ${item.sede}
 Distrito: ${item.distrito}${item.departamento ? ', ' + item.departamento : ''}
 Fecha: ${formatDateDMY(item.fecha)}
-Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + linkUbicacion : ''}`;
+Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + linkUbicacion : ''}${extra}`;
     }
 
     // Abre WhatsApp Web con el mensaje de la OIT ya redactado, listo para enviar
@@ -2319,6 +2392,78 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       showToast('Comentario guardado.', 'success');
     }
 
+    // ==================== DOCUMENTOS + COMENTARIO PARA EL TÉCNICO (Programaciones) ====================
+    // Se guardan en item.documentosProgramacion (array de {nombre, tipo, data en base64})
+    // e item.comentarioProgramacion (texto). Al asignar/agendar un técnico para esa OIT,
+    // asignarTecnico() los envía junto con el correo "Asignación de OIT".
+    function abrirProgramacionDocsModal(id) {
+      const item = oits.find(o => o.id === id);
+      if (!item) return;
+      document.getElementById('prog-docs-oit-id').value = id;
+      document.getElementById('modal-prog-oit-title').innerText = item.oit;
+      document.getElementById('prog-comentario-texto').value = item.comentarioProgramacion || '';
+      document.getElementById('prog-docs-input').value = '';
+      renderProgramacionDocsLista(item);
+      document.getElementById('modal-programacion-docs').classList.add('show');
+    }
+
+    function renderProgramacionDocsLista(item) {
+      const cont = document.getElementById('prog-docs-lista');
+      const docs = item.documentosProgramacion || [];
+      if (docs.length === 0) {
+        cont.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted);">Sin documentos adjuntos todavía.</div>';
+        return;
+      }
+      cont.innerHTML = docs.map((doc, i) => `
+        <div class="doc-adjunto-item">
+          <span><i class="fa-solid fa-file"></i> ${doc.nombre}</span>
+          <button class="btn-icon" style="color: var(--dbz-red);" onclick="eliminarDocumentoProgramacion(${item.id}, ${i})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `).join('');
+    }
+
+    function agregarDocumentoProgramacion(fileList) {
+      const id = parseInt(document.getElementById('prog-docs-oit-id').value);
+      const item = oits.find(o => o.id === id);
+      if (!item || !fileList || fileList.length === 0) return;
+      if (!item.documentosProgramacion) item.documentosProgramacion = [];
+
+      const lecturas = Array.from(fileList).map(file => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ nombre: file.name, tipo: file.type || 'application/octet-stream', data: reader.result.split(',')[1] });
+        reader.readAsDataURL(file);
+      }));
+
+      Promise.all(lecturas).then(nuevos => {
+        item.documentosProgramacion.push(...nuevos);
+        renderProgramacionDocsLista(item);
+        showToast(`${nuevos.length} archivo(s) agregado(s). Recuerda hacer clic en Guardar.`, 'success');
+      });
+    }
+
+    function eliminarDocumentoProgramacion(id, idx) {
+      const item = oits.find(o => o.id === id);
+      if (!item || !item.documentosProgramacion) return;
+      item.documentosProgramacion.splice(idx, 1);
+      renderProgramacionDocsLista(item);
+    }
+
+    function guardarProgramacionDocs() {
+      const id = parseInt(document.getElementById('prog-docs-oit-id').value);
+      const item = oits.find(o => o.id === id);
+      if (!item) return;
+      item.comentarioProgramacion = document.getElementById('prog-comentario-texto').value.trim();
+      try {
+        saveOits();
+      } catch (e) {
+        showToast('⚠️ No se pudo guardar: el almacenamiento del navegador está lleno. Usa archivos más pequeños o elimina alguno.', 'error');
+        return;
+      }
+      renderSchedule();
+      closeModal('modal-programacion-docs');
+      showToast('Comentario y documentos guardados para esta OIT.', 'success');
+    }
+
     // Cierra cualquier ventana emergente (modal-backdrop) abierta al hacer clic
     // fuera de la caja, o al presionar la tecla ESC.
     document.addEventListener('click', function (e) {
@@ -2528,27 +2673,32 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
     function renderSchedule() {
       const grid = document.getElementById('week-calendar-grid');
       grid.innerHTML = '';
+      // Solo Lunes a Viernes (sin fin de semana).
       const days = [
         { name: 'Lun 07 Set', date: '2026-09-07' },
         { name: 'Mar 08 Set', date: '2026-09-08' },
         { name: 'Mié 09 Set', date: '2026-09-09' },
         { name: 'Jue 10 Set', date: '2026-09-10' },
-        { name: 'Vie 11 Set', date: '2026-09-11' },
-        { name: 'Sáb 12 Set', date: '2026-09-12' },
-        { name: 'Dom 13 Set', date: '2026-09-13' }
+        { name: 'Vie 11 Set', date: '2026-09-11' }
       ];
 
       days.forEach(d => {
         const dayOits = oits.filter(o => o.fecha === d.date);
         let cardsHtml = '';
         if (dayOits.length === 0) {
-          cardsHtml = '<div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 20px;">Sin OITs</div>';
+          cardsHtml = '<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 30px;">Sin OITs</div>';
         } else {
           dayOits.forEach(o => {
+            const tieneContenido = (o.comentarioProgramacion && o.comentarioProgramacion.trim() !== '') || (o.documentosProgramacion && o.documentosProgramacion.length > 0);
             cardsHtml += `
               <div class="schedule-pill">
-                <strong>${o.oit}</strong> - ${o.departamento}<br>
-                <span style="font-size: 0.7rem; color: var(--text-muted);">${o.tecnico || 'Sin técnico'}</span>
+                <div>
+                  <strong>${o.oit}</strong> - ${o.departamento}<br>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">${o.tecnico || 'Sin técnico'}</span>
+                </div>
+                <button class="schedule-pill-btn ${tieneContenido ? 'has-content' : ''}" title="Documentos y comentario para el técnico" onclick="abrirProgramacionDocsModal(${o.id})">
+                  <i class="fa-solid fa-paperclip"></i>
+                </button>
               </div>
             `;
           });
