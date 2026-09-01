@@ -462,6 +462,12 @@
       font-size: 0.88rem;
     }
 
+    /* La tabla principal ahora tiene 3 columnas de Guía (TELDAT / NETSKOPE /
+       Desinstalación) en vez de 1, necesita más ancho mínimo. */
+    #main-table {
+      min-width: 2150px;
+    }
+
     th {
       background: rgba(6, 12, 28, 0.7); backdrop-filter: blur(8px);
       color: var(--dbz-yellow);
@@ -982,7 +988,9 @@
               <th>Fecha Agendada</th>
               <th>Técnico Asignado</th>
               <th>Estado</th>
-              <th>Guía de Instalación</th>
+              <th>Guía de Instalación TELDAT</th>
+              <th>Guía de Instalación NETSKOPE</th>
+              <th>Guía de Desinstalación</th>
               <th>Entregables</th>
               <th style="text-align: center;">Acciones</th>
             </tr>
@@ -1158,6 +1166,7 @@
               <th>Informe</th>
               <th>% Avance Documentario</th>
               <th>Estado OIT</th>
+              <th style="text-align:center;">Comentario</th>
             </tr>
           </thead>
           <tbody id="entregables-table-body">
@@ -1374,6 +1383,53 @@
     </div>
   </div>
 
+  <!-- MODAL RESULTADO NOTIFICACIONES DE ASIGNACIÓN -->
+  <div class="modal-backdrop" id="modal-notif-resultado">
+    <div class="modal-box" style="max-width: 640px; border-width: 3px; box-shadow: 0 0 45px rgba(255, 111, 0, 0.6);">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-paper-plane"></i> NOTIFICACIONES DE ASIGNACIÓN <span id="notif-resultado-oit-title" style="color: #fff;"></span></h3>
+        <i class="fa-solid fa-xmark" style="cursor: pointer; font-size: 1.2rem;" onclick="closeModal('modal-notif-resultado')"></i>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="notif-resultado-oit-id">
+        <div id="notif-resultado-banner" style="text-align:center; font-family:'Orbitron'; font-size:0.95rem; padding:10px; border-radius:8px; margin-bottom:14px;"></div>
+        <div id="notif-resultado-lista" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 16px;"></div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-dbz btn-dbz-secondary" style="flex:1;" onclick="reenviarCorreosNotificacion()">
+            <i class="fa-solid fa-rotate"></i> Reenviar correos
+          </button>
+          <button class="btn-dbz" style="flex:1; background:#25D366;" onclick="abrirWhatsAppWebOit(parseInt(document.getElementById('notif-resultado-oit-id').value))">
+            <i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp Web
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-dbz btn-dbz-secondary" onclick="closeModal('modal-notif-resultado')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL COMENTARIO DE OIT (pestaña Entregables) -->
+  <div class="modal-backdrop" id="modal-comentario">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-comment-dots"></i> COMENTARIO <span id="modal-comentario-oit-title" style="color: #fff;"></span></h3>
+        <i class="fa-solid fa-xmark" style="cursor: pointer; font-size: 1.2rem;" onclick="closeModal('modal-comentario')"></i>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="comentario-oit-id">
+        <div class="form-group">
+          <label>Comentario</label>
+          <textarea id="comentario-texto" class="form-control" rows="5" placeholder="Escribe una observación sobre esta OIT..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-dbz btn-dbz-secondary" onclick="closeModal('modal-comentario')">Cancelar</button>
+        <button class="btn-dbz" onclick="guardarComentarioOit()"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bandeja de notificaciones (reemplaza al alert() nativo) -->
   <div id="toast-tray"></div>
 
@@ -1391,6 +1447,23 @@
     } else {
       oits = JSON.parse(localStorage.getItem('conectamef_oits_v2')) || initialOits;
     }
+
+    // Migración: la "Guía de Instalación" antigua (un solo campo) ahora se
+    // divide en 3 (TELDAT / NETSKOPE / Desinstalación). Se conserva lo que
+    // ya estaba cargado como Guía TELDAT y se calculan los flags de avance.
+    oits.forEach(o => {
+      if (o.guia_nro !== undefined && o.guia_teldat_nro === undefined) o.guia_teldat_nro = o.guia_nro;
+      if (o.guia_codigo !== undefined && o.guia_teldat_codigo === undefined) o.guia_teldat_codigo = o.guia_codigo;
+      if (o.completo_teldat === undefined) {
+        o.completo_teldat = !!((o.guia_teldat_nro || '').trim() && (o.guia_teldat_codigo || '').trim());
+      }
+      if (o.completo_netskope === undefined) {
+        o.completo_netskope = !!((o.guia_netskope_nro || '').trim() && (o.guia_netskope_codigo || '').trim());
+      }
+      if (o.completo_desinstalacion === undefined) {
+        o.completo_desinstalacion = !!((o.guia_desinst_nro || '').trim() && (o.guia_desinst_codigo || '').trim());
+      }
+    });
 
     let tecnicos = JSON.parse(localStorage.getItem('conectamef_tecnicos')) || [
       { id: 1, nombre: 'Goku Son', phone: '51987654321', email: 'goku@conectamef.gob.pe' },
@@ -1781,8 +1854,20 @@
           </td>
           <td>
             <div class="guia-instalacion-group">
-              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'guia_nro', this.value)">
-              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'guia_codigo', this.value)">
+              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_teldat_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'teldat', 'guia_teldat_nro', this.value)">
+              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_teldat_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'teldat', 'guia_teldat_codigo', this.value)">
+            </div>
+          </td>
+          <td>
+            <div class="guia-instalacion-group">
+              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_netskope_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'netskope', 'guia_netskope_nro', this.value)">
+              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_netskope_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'netskope', 'guia_netskope_codigo', this.value)">
+            </div>
+          </td>
+          <td>
+            <div class="guia-instalacion-group">
+              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_desinst_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'desinstalacion', 'guia_desinst_nro', this.value)">
+              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_desinst_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'desinstalacion', 'guia_desinst_codigo', this.value)">
             </div>
           </td>
           <td class="deliverables-box">
@@ -1842,9 +1927,10 @@
     // ==================== ASIGNACIÓN DE TÉCNICO + NOTIFICACIONES ====================
     // 1) Busca el técnico (en Firestore si está configurado; si no, en el arreglo local)
     // 2) Actualiza el campo "tecnico" del documento de la OIT (local + Firestore)
-    // 3) Envía correo vía Google Apps Script
-    // 4) Envía WhatsApp vía CallMeBot
-    // 5) Muestra el resultado en la UI con showToast() (nunca alert() nativo)
+    // 3) Envía 2 correos vía Google Apps Script: "Asignación de OIT" y "Solicitud de Equipo"
+    //    (este último con el Excel de Drive actualizado y adjunto)
+    // 4) Envía WhatsApp automático vía CallMeBot (si el técnico ya activó su key)
+    // 5) Muestra un popup con el resultado de cada envío + botón para abrir WhatsApp Web
     async function asignarTecnico(oitId, nombreTecnico) {
       const item = oits.find(o => o.id === oitId);
       if (!item) return;
@@ -1869,23 +1955,25 @@
         return;
       }
 
-      await Promise.all([
+      const [resCorreo, resWhatsApp] = await Promise.all([
         enviarNotificacionCorreo(item, tech),
         enviarNotificacionWhatsApp(item, tech)
       ]);
+
+      mostrarModalNotificacion(item, tech, resCorreo, resWhatsApp);
     }
 
-    // Correo vía Google Apps Script (ver Code.gs) — usa la URL guardada en
+    // Correos vía Google Apps Script (ver Code.gs) — usa la URL guardada en
     // localStorage.getItem('APPS_SCRIPT_URL'), configurada en la pestaña "Configuración".
+    // El Apps Script envía 2 correos (Asignación de OIT + Solicitud de Equipo con Excel
+    // adjunto) y responde con el resultado de cada uno por separado.
     async function enviarNotificacionCorreo(item, tech) {
       const url = localStorage.getItem('APPS_SCRIPT_URL');
       if (!url) {
-        showToast('⚠️ Falta configurar la URL del Apps Script en la pestaña "Configuración".', 'warn');
-        return;
+        return { success: false, sinConfigurar: true };
       }
       if (!tech.email) {
-        showToast(`⚠️ ${tech.nombre} no tiene correo registrado; no se envió el correo.`, 'warn');
-        return;
+        return { success: false, sinCorreo: true };
       }
       try {
         const res = await fetch(url, {
@@ -1900,48 +1988,158 @@
             departamento: item.departamento,
             fecha: item.fecha,
             fechaFormateada: formatDateDMY(item.fecha),
-            horario: item.horario || ''
+            horario: item.horario || '',
+            coordenadas: item.coordenadas || '',
+            direccion: item.direccion || ''
           })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        if (data.success) {
-          showToast(`✅ Correo enviado a ${tech.nombre} (OIT ${item.oit}).`, 'success');
-        } else {
-          showToast(`❌ Error al enviar correo: ${data.error || 'error desconocido'}`, 'error');
-        }
+        return data; // { success, correo1: {ok, error?}, correo2: {ok, error?} }
       } catch (e) {
-        showToast('❌ Error de red al enviar correo: ' + e.message, 'error');
+        return { success: false, errorRed: e.message };
       }
     }
 
-    // WhatsApp vía CallMeBot — requiere que el técnico ya haya activado su
-    // propia API key (ver pestaña "Configuración" > instrucciones CallMeBot).
-    async function enviarNotificacionWhatsApp(item, tech) {
-      const telefono = (tech.telefono || tech.phone || '').replace(/[^0-9]/g, '');
-      if (!telefono) {
-        showToast(`⚠️ ${tech.nombre} no tiene teléfono registrado; no se envió el WhatsApp.`, 'warn');
-        return;
-      }
-      if (!tech.callmebotKey) {
-        showToast(`⚠️ ${tech.nombre} aún no activó su CallMeBot Key; no se envió el WhatsApp.`, 'warn');
-        return;
-      }
-      const mensaje =
-`CONECTAMEF - Nueva OIT Asignada
+    // Link de Google Maps según las coordenadas de la OIT (o la dirección si
+    // no hay coordenadas). Se usa tanto en el WhatsApp como en el correo.
+    function construirLinkUbicacion(item) {
+      const query = (item.coordenadas && item.coordenadas.trim() !== '') ? item.coordenadas : (item.direccion || '');
+      if (!query) return '';
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    }
+
+    // Construye el mensaje de WhatsApp para la asignación de una OIT (se usa tanto
+    // para el envío automático por CallMeBot como para el link manual de WhatsApp Web).
+    function construirMensajeWhatsAppOit(item, tech) {
+      const linkUbicacion = construirLinkUbicacion(item);
+      return `CONECTAMEF - Asignación de Nueva OIT
 Técnico: ${tech.nombre}
 OIT: ${item.oit}
 Sede: ${item.sede}
-Distrito: ${item.distrito}
+Distrito: ${item.distrito}${item.departamento ? ', ' + item.departamento : ''}
 Fecha: ${formatDateDMY(item.fecha)}
-Horario: ${item.horario || 'Por definir'}`;
+Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + linkUbicacion : ''}`;
+    }
 
+    // Abre WhatsApp Web con el mensaje de la OIT ya redactado, listo para enviar
+    // manualmente. Sirve como respaldo cuando el técnico aún no tiene CallMeBot Key,
+    // y también está disponible siempre por si se quiere enviar manualmente.
+    function abrirWhatsAppWebOit(oitId) {
+      const item = oits.find(o => o.id === oitId);
+      if (!item) { showToast('No se encontró la OIT.', 'warn'); return; }
+      const tech = tecnicos.find(t => t.nombre === item.tecnico) ||
+        { nombre: item.tecnico, phone: '' };
+      const telefono = (tech.phone || tech.telefono || '').replace(/[^0-9]/g, '');
+      if (!telefono) {
+        showToast(`⚠️ ${tech.nombre || 'El técnico'} no tiene teléfono registrado.`, 'warn');
+        return;
+      }
+      const texto = encodeURIComponent(construirMensajeWhatsAppOit(item, tech));
+      window.open(`https://api.whatsapp.com/send?phone=${telefono}&text=${texto}`, '_blank');
+    }
+
+    // Guarda la última asignación mostrada en el popup, para poder reenviar
+    // los correos sin tener que volver a buscar el técnico/OIT.
+    let ultimoNotif = { item: null, tech: null, resWhatsApp: null };
+
+    // Pinta el popup con el resultado de los 2 correos + el WhatsApp automático,
+    // y deja el botón de WhatsApp Web listo para esta OIT.
+    function mostrarModalNotificacion(item, tech, resCorreo, resWhatsApp) {
+      ultimoNotif = { item, tech, resWhatsApp };
+
+      const filaHtml = (tipo, titulo, detalle) => {
+        const clase = tipo === 'ok' ? 'config-status-ok' : (tipo === 'warn' ? 'config-status-warn' : 'config-status-bad');
+        const icono = tipo === 'ok' ? '✅' : (tipo === 'warn' ? '⚠️' : '❌');
+        return `<div style="background:#060b18; border-radius:8px; padding:10px 12px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-weight:600; color:#fff; margin-bottom:2px;">${icono} ${titulo}</div>
+          <div class="${clase}" style="font-size:0.82rem;">${detalle}</div>
+        </div>`;
+      };
+
+      const filas = [];
+      let correosOk = 0;
+      let correosTotal = 2;
+      if (resCorreo.sinConfigurar) {
+        filas.push(filaHtml('warn', 'Correo "Asignación de OIT"', 'No se envió: falta configurar la URL del Apps Script en Configuración.'));
+        filas.push(filaHtml('warn', 'Correo "Solicitud de Equipo"', 'No se envió: falta configurar la URL del Apps Script en Configuración.'));
+      } else if (resCorreo.sinCorreo) {
+        filas.push(filaHtml('warn', 'Correo "Asignación de OIT"', `${tech.nombre} no tiene correo registrado.`));
+        filas.push(filaHtml('warn', 'Correo "Solicitud de Equipo"', `${tech.nombre} no tiene correo registrado.`));
+      } else if (resCorreo.errorRed) {
+        filas.push(filaHtml('bad', 'Correo "Asignación de OIT"', 'Error de red: ' + resCorreo.errorRed));
+        filas.push(filaHtml('bad', 'Correo "Solicitud de Equipo"', 'Error de red: ' + resCorreo.errorRed));
+      } else {
+        const c1 = resCorreo.correo1 || {};
+        const c2 = resCorreo.correo2 || {};
+        if (c1.ok) correosOk++;
+        if (c2.ok) correosOk++;
+        filas.push(filaHtml(c1.ok ? 'ok' : 'bad', 'Correo "Asignación de OIT"', c1.ok ? 'Enviado correctamente.' : ('Error: ' + (c1.error || 'desconocido'))));
+        filas.push(filaHtml(c2.ok ? 'ok' : 'bad', 'Correo "Solicitud de Equipo"', c2.ok ? 'Enviado con el Excel actualizado adjunto.' : ('Error: ' + (c2.error || 'desconocido'))));
+      }
+
+      if (resWhatsApp.ok) {
+        filas.push(filaHtml('ok', 'WhatsApp automático (CallMeBot)', 'Enviado correctamente.'));
+      } else if (resWhatsApp.motivo === 'sin_telefono') {
+        filas.push(filaHtml('warn', 'WhatsApp automático (CallMeBot)', `${tech.nombre} no tiene teléfono registrado.`));
+      } else if (resWhatsApp.motivo === 'sin_key') {
+        filas.push(filaHtml('warn', 'WhatsApp automático (CallMeBot)', `${tech.nombre} aún no activó su CallMeBot Key. Usa "Abrir WhatsApp Web" abajo mientras tanto.`));
+      } else {
+        filas.push(filaHtml('bad', 'WhatsApp automático (CallMeBot)', 'Error: ' + (resWhatsApp.error || 'no se pudo enviar')));
+      }
+
+      const banner = document.getElementById('notif-resultado-banner');
+      if (correosOk === correosTotal) {
+        banner.style.background = 'rgba(0, 230, 118, 0.15)';
+        banner.style.border = '1px solid var(--dbz-green)';
+        banner.style.color = 'var(--dbz-green)';
+        banner.innerHTML = '✅ Los 2 correos se enviaron correctamente';
+      } else if (correosOk > 0) {
+        banner.style.background = 'rgba(255, 214, 0, 0.12)';
+        banner.style.border = '1px solid var(--dbz-yellow)';
+        banner.style.color = 'var(--dbz-yellow)';
+        banner.innerHTML = `⚠️ Se envió ${correosOk} de ${correosTotal} correos`;
+      } else {
+        banner.style.background = 'rgba(255, 23, 68, 0.12)';
+        banner.style.border = '1px solid var(--dbz-red)';
+        banner.style.color = 'var(--dbz-red)';
+        banner.innerHTML = '❌ No se pudo enviar ningún correo';
+      }
+
+      document.getElementById('notif-resultado-oit-title').innerText = `— OIT ${item.oit} · ${tech.nombre}`;
+      document.getElementById('notif-resultado-lista').innerHTML = filas.join('');
+      document.getElementById('notif-resultado-oit-id').value = item.id;
+      document.getElementById('modal-notif-resultado').classList.add('show');
+    }
+
+    // Vuelve a intentar el envío de los 2 correos para la última asignación
+    // mostrada en el popup, sin volver a tocar el WhatsApp.
+    async function reenviarCorreosNotificacion() {
+      if (!ultimoNotif.item || !ultimoNotif.tech) return;
+      showToast('Reenviando correos...', 'warn');
+      const resCorreo = await enviarNotificacionCorreo(ultimoNotif.item, ultimoNotif.tech);
+      mostrarModalNotificacion(ultimoNotif.item, ultimoNotif.tech, resCorreo, ultimoNotif.resWhatsApp);
+    }
+
+    // WhatsApp automático vía CallMeBot — requiere que el técnico ya haya activado
+    // su propia API key (ver pestaña "Configuración" > instrucciones CallMeBot).
+    // Si falta el teléfono o la key, no es un error: se reporta el motivo y el
+    // popup de asignación ofrece el botón "Abrir WhatsApp Web" como respaldo.
+    async function enviarNotificacionWhatsApp(item, tech) {
+      const telefono = (tech.telefono || tech.phone || '').replace(/[^0-9]/g, '');
+      if (!telefono) {
+        return { ok: false, motivo: 'sin_telefono' };
+      }
+      if (!tech.callmebotKey) {
+        return { ok: false, motivo: 'sin_key' };
+      }
+      const mensaje = construirMensajeWhatsAppOit(item, tech);
       try {
         const res = await fetch(`https://api.callmebot.com/whatsapp.php?phone=${telefono}&text=${encodeURIComponent(mensaje)}&apikey=${tech.callmebotKey}`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        showToast(`✅ WhatsApp enviado a ${tech.nombre} (OIT ${item.oit}).`, 'success');
+        return { ok: true };
       } catch (e) {
-        showToast('❌ Error de red al enviar WhatsApp: ' + e.message, 'error');
+        return { ok: false, motivo: 'error', error: e.message };
       }
     }
 
@@ -1966,15 +2164,28 @@ Horario: ${item.horario || 'Por definir'}`;
     }
 
     // Guia de Instalacion (Nro. de Guia + Codigo) -> auto-marca el entregable "Guia"
-    function updateGuiaInfo(id, field, val) {
+    // tipo: 'teldat' | 'netskope' | 'desinstalacion'. El entregable "Guía" del
+    // resumen (Entregables) se marca completo cuando las 3 guías tienen su
+    // Nro. y Código llenados.
+    function updateGuiaInfo(id, tipo, field, val) {
       const item = oits.find(o => o.id === id);
       if (!item) return;
       item[field] = val;
-      const nro = (item.guia_nro || '').trim();
-      const codigo = (item.guia_codigo || '').trim();
-      if (nro !== '' && codigo !== '') {
-        item.guia = true;
+
+      const camposPorTipo = {
+        teldat: ['guia_teldat_nro', 'guia_teldat_codigo'],
+        netskope: ['guia_netskope_nro', 'guia_netskope_codigo'],
+        desinstalacion: ['guia_desinst_nro', 'guia_desinst_codigo']
+      };
+      const campos = camposPorTipo[tipo];
+      if (campos) {
+        const nro = (item[campos[0]] || '').trim();
+        const codigo = (item[campos[1]] || '').trim();
+        item['completo_' + tipo] = (nro !== '' && codigo !== '');
       }
+
+      item.guia = !!(item.completo_teldat && item.completo_netskope && item.completo_desinstalacion);
+
       saveOits();
       renderTable();
       renderEntregablesTable();
@@ -2086,6 +2297,40 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
     function closeModal(id) {
       document.getElementById(id).classList.remove('show');
     }
+
+    // Comentario por OIT (pestaña Entregables)
+    function abrirComentarioModal(id) {
+      const item = oits.find(o => o.id === id);
+      if (!item) return;
+      document.getElementById('comentario-oit-id').value = id;
+      document.getElementById('modal-comentario-oit-title').innerText = item.oit;
+      document.getElementById('comentario-texto').value = item.comentario || '';
+      document.getElementById('modal-comentario').classList.add('show');
+    }
+
+    function guardarComentarioOit() {
+      const id = parseInt(document.getElementById('comentario-oit-id').value);
+      const item = oits.find(o => o.id === id);
+      if (!item) return;
+      item.comentario = document.getElementById('comentario-texto').value.trim();
+      saveOits();
+      renderEntregablesTable();
+      closeModal('modal-comentario');
+      showToast('Comentario guardado.', 'success');
+    }
+
+    // Cierra cualquier ventana emergente (modal-backdrop) abierta al hacer clic
+    // fuera de la caja, o al presionar la tecla ESC.
+    document.addEventListener('click', function (e) {
+      if (e.target.classList && e.target.classList.contains('modal-backdrop')) {
+        e.target.classList.remove('show');
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+      }
+    });
 
     // Pagination
     function prevPage() {
@@ -2243,6 +2488,11 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
               <div class="progress-pct-text">${pct}%</div>
             </td>
             <td><span class="badge-status" style="background: rgba(255,255,255,0.1); color: ${getStatusColor(row.estado)};">${row.estado}</span></td>
+            <td style="text-align:center;">
+              <button class="btn-icon" title="${row.comentario ? 'Ver / editar comentario' : 'Agregar comentario'}" onclick="abrirComentarioModal(${row.id})">
+                <i class="fa-solid fa-comment-dots" style="color: ${row.comentario ? 'var(--dbz-yellow)' : 'var(--text-muted)'};"></i>
+              </button>
+            </td>
           </tr>
         `;
       });
@@ -2407,9 +2657,9 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
 
     // Export CSV
     function exportToCSV() {
-      let csv = "ID,Sede,Tipo,OIT,Servicio,Direccion,Departamento,Provincia,Distrito,Coordenadas,Fecha,Tecnico,Estado,Nro Guia,Codigo Guia,Acta,Guia,Informe\n";
+      let csv = "ID,Sede,Tipo,OIT,Servicio,Direccion,Departamento,Provincia,Distrito,Coordenadas,Fecha,Tecnico,Estado,Nro Guia TELDAT,Codigo Guia TELDAT,Nro Guia NETSKOPE,Codigo Guia NETSKOPE,Nro Guia Desinstalacion,Codigo Guia Desinstalacion,Acta,Guia,Informe,Comentario\n";
       oits.forEach(r => {
-        csv += `"${r.id}","${r.sede}","${r.tipo}","${r.oit}","${r.servicio}","${r.direccion}","${r.departamento}","${r.provincia}","${r.distrito}","${r.coordenadas}","${r.fecha}","${r.tecnico}","${r.estado}","${r.guia_nro || ''}","${r.guia_codigo || ''}","${r.acta}","${r.guia}","${r.informe}"\n`;
+        csv += `"${r.id}","${r.sede}","${r.tipo}","${r.oit}","${r.servicio}","${r.direccion}","${r.departamento}","${r.provincia}","${r.distrito}","${r.coordenadas}","${r.fecha}","${r.tecnico}","${r.estado}","${r.guia_teldat_nro || ''}","${r.guia_teldat_codigo || ''}","${r.guia_netskope_nro || ''}","${r.guia_netskope_codigo || ''}","${r.guia_desinst_nro || ''}","${r.guia_desinst_codigo || ''}","${r.acta}","${r.guia}","${r.informe}","${(r.comentario || '').replace(/"/g, '""')}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
