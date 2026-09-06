@@ -10,6 +10,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- SheetJS (para plantilla y carga masiva de técnicos en Excel) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg-dark: transparent;
@@ -386,6 +388,59 @@
     .btn-dbz-secondary:hover {
       background: rgba(255, 255, 255, 0.2);
       box-shadow: none;
+    }
+
+    /* BANNER: CARGA MASIVA DE TÉCNICOS */
+    .bulk-upload-banner {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: linear-gradient(135deg, #14161c, #1d2029);
+      border: 1px solid rgba(255, 111, 0, 0.35);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      flex-wrap: wrap;
+    }
+
+    .bulk-upload-banner-icon {
+      width: 52px;
+      height: 52px;
+      min-width: 52px;
+      border-radius: 10px;
+      background: rgba(255, 111, 0, 0.15);
+      color: var(--dbz-yellow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      border: 1px solid rgba(255, 111, 0, 0.4);
+    }
+
+    .bulk-upload-banner-text {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .bulk-upload-banner-text h3 {
+      font-family: 'Orbitron', sans-serif;
+      color: #fff;
+      font-size: 1.05rem;
+      margin: 0 0 6px 0;
+    }
+
+    .bulk-upload-banner-text p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .bulk-upload-banner-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
     /* TABS NAVIGATION */
@@ -1083,6 +1138,18 @@
 
     <!-- TAB 4: CARGA DE TÉCNICOS -->
     <div id="tab-tecnicos" class="tab-pane">
+      <div class="bulk-upload-banner">
+        <div class="bulk-upload-banner-icon"><i class="fa-solid fa-briefcase"></i></div>
+        <div class="bulk-upload-banner-text">
+          <h3>Carga masiva de técnicos</h3>
+          <p>Descarga la plantilla, complétala y súbela para registrar varios técnicos a la vez. Nombre, Celular (WhatsApp) y Correo son obligatorios.</p>
+        </div>
+        <div class="bulk-upload-banner-actions">
+          <button class="btn-dbz btn-dbz-secondary" onclick="descargarPlantillaTecnicos()"><i class="fa-solid fa-file-arrow-down"></i> Descargar plantilla Excel</button>
+          <button class="btn-dbz" onclick="document.getElementById('tecnicos-bulk-input').click()"><i class="fa-solid fa-file-arrow-up"></i> Subir Excel masivo</button>
+          <input type="file" id="tecnicos-bulk-input" accept=".xlsx,.xls" style="display:none;" onchange="procesarExcelMasivoTecnicos(this.files)">
+        </div>
+      </div>
       <div style="display: grid; grid-template-columns: 350px 1fr; gap: 20px;">
         <div style="background: var(--bg-card); backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 20px; border-radius: 10px; border: 1px solid rgba(255, 111, 0, 0.3);">
           <h3 style="font-family: 'Orbitron'; color: var(--dbz-yellow); margin-bottom: 15px;"><i class="fa-solid fa-user-plus"></i> Registrar Técnico</h3>
@@ -1099,6 +1166,10 @@
             <input type="email" id="tech-email" class="form-control" placeholder="Ej. vegeta@capsulecorp.com">
           </div>
           <div class="form-group">
+            <label>Departamento asignado <span style="color: var(--text-muted); font-weight: 400;">(Opcional)</span></label>
+            <input type="text" id="tech-departamento" class="form-control" placeholder="Ej. Lima">
+          </div>
+          <div class="form-group">
             <label>CallMeBot API Key <span style="color: var(--text-muted); font-weight: 400;">(WhatsApp)</span></label>
             <input type="text" id="tech-callmebot" class="form-control" placeholder="Ej. 123456">
           </div>
@@ -1111,6 +1182,7 @@
                 <th>Nombre del Técnico</th>
                 <th>WhatsApp</th>
                 <th>Correo Electrónico</th>
+                <th>Departamento</th>
                 <th>CallMeBot Key</th>
                 <th>OITs Asignadas</th>
                 <th>Acciones</th>
@@ -2551,6 +2623,7 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
             <td><strong>${t.nombre}</strong></td>
             <td><a href="https://wa.me/${t.phone}" target="_blank" style="color: #25D366; text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> ${t.phone}</a></td>
             <td>${t.email}</td>
+            <td>${t.departamento || '-'}</td>
             <td>
               <input type="text" class="input-guia-mini" style="width: 130px;" placeholder="Sin activar" value="${t.callmebotKey || ''}" onchange="updateTechCallmebotKey(${t.id}, this.value)">
             </td>
@@ -2567,20 +2640,122 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       const name = document.getElementById('tech-name').value.trim();
       const phone = document.getElementById('tech-phone').value.trim();
       const email = document.getElementById('tech-email').value.trim();
+      const departamento = document.getElementById('tech-departamento').value.trim();
       const callmebotKey = document.getElementById('tech-callmebot').value.trim();
       if (!name || !phone) {
         showToast('Por favor completa el nombre y celular del técnico.', 'error');
         return;
       }
-      tecnicos.push({ id: Date.now(), nombre: name, phone: phone, email: email, callmebotKey: callmebotKey });
+      tecnicos.push({ id: Date.now(), nombre: name, phone: phone, email: email, departamento: departamento, callmebotKey: callmebotKey });
       saveTecnicos();
       renderTecnicosTable();
       renderTable();
       document.getElementById('tech-name').value = '';
       document.getElementById('tech-phone').value = '';
       document.getElementById('tech-email').value = '';
+      document.getElementById('tech-departamento').value = '';
       document.getElementById('tech-callmebot').value = '';
       showToast('Técnico agregado con éxito.', 'success');
+    }
+
+    // ==================== CARGA MASIVA DE TÉCNICOS (Excel) ====================
+    function descargarPlantillaTecnicos() {
+      try {
+        const headers = ['Nombre del técnico*', 'Celular (WhatsApp)*', 'Correo*', 'Departamento asignado', 'API Key WhatsApp (CallMeBot)'];
+        const ejemplo = ['Carlos Ramírez', '+51 987 654 321', 'carlos.ramirez@correo.com', 'Lima', '123456'];
+        const ws = XLSX.utils.aoa_to_sheet([headers, ejemplo]);
+        ws['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 28 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Técnicos');
+        XLSX.writeFile(wb, 'Plantilla_Tecnicos.xlsx');
+        showToast('Plantilla descargada. Complétala y súbela con "Subir Excel masivo".', 'success');
+      } catch (e) {
+        console.error(e);
+        showToast('No se pudo generar la plantilla Excel.', 'error');
+      }
+    }
+
+    function normalizarTextoEncabezado(txt) {
+      return (txt || '').toString().toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+    }
+
+    function procesarExcelMasivoTecnicos(fileList) {
+      if (!fileList || !fileList.length) return;
+      const file = fileList[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const filas = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          if (!filas.length) {
+            showToast('El archivo Excel está vacío.', 'error');
+            document.getElementById('tecnicos-bulk-input').value = '';
+            return;
+          }
+          // Detectar columnas por el texto del encabezado (fila 1)
+          const encabezados = filas[0].map(normalizarTextoEncabezado);
+          let colNombre = -1, colPhone = -1, colEmail = -1, colDept = -1, colKey = -1;
+          encabezados.forEach((h, idx) => {
+            if (colKey === -1 && (h.includes('callmebot') || h.includes('apikey') || (h.includes('api') && h.includes('key')))) { colKey = idx; return; }
+            if (colEmail === -1 && (h.includes('correo') || h.includes('email'))) { colEmail = idx; return; }
+            if (colPhone === -1 && (h.includes('celular') || h.includes('telefono') || h.includes('movil') || h.includes('phone') || h.includes('whatsapp'))) { colPhone = idx; return; }
+            if (colDept === -1 && h.includes('departamento')) { colDept = idx; return; }
+            if (colNombre === -1 && h.includes('nombre')) { colNombre = idx; return; }
+          });
+          if (colNombre === -1 || colPhone === -1 || colEmail === -1) {
+            showToast('No se reconocen las columnas de la plantilla. Usa "Descargar plantilla Excel" para obtener el formato correcto.', 'error');
+            document.getElementById('tecnicos-bulk-input').value = '';
+            return;
+          }
+
+          let agregados = 0, incompletos = 0, duplicados = 0;
+          for (let i = 1; i < filas.length; i++) {
+            const fila = filas[i];
+            if (!fila || fila.every(c => c === '' || c === null || c === undefined)) continue;
+            const nombre = (fila[colNombre] || '').toString().trim();
+            const phone = (fila[colPhone] || '').toString().trim();
+            const email = (fila[colEmail] || '').toString().trim();
+            const departamento = colDept > -1 ? (fila[colDept] || '').toString().trim() : '';
+            const callmebotKey = colKey > -1 ? (fila[colKey] || '').toString().trim() : '';
+            if (!nombre || !phone || !email) {
+              incompletos++;
+              continue;
+            }
+            const yaExiste = tecnicos.some(t => t.phone.replace(/\D/g, '') === phone.replace(/\D/g, '') || (t.nombre.toLowerCase() === nombre.toLowerCase() && t.email.toLowerCase() === email.toLowerCase()));
+            if (yaExiste) {
+              duplicados++;
+              continue;
+            }
+            tecnicos.push({ id: Date.now() + i, nombre: nombre, phone: phone, email: email, departamento: departamento, callmebotKey: callmebotKey });
+            agregados++;
+          }
+
+          if (agregados > 0) {
+            saveTecnicos();
+            renderTecnicosTable();
+            renderTable();
+          }
+
+          let resumen = `${agregados} técnico(s) agregado(s).`;
+          if (duplicados > 0) resumen += ` ${duplicados} duplicado(s) omitido(s).`;
+          if (incompletos > 0) resumen += ` ${incompletos} fila(s) incompleta(s) omitida(s).`;
+          showToast(resumen, agregados > 0 ? 'success' : 'warn');
+        } catch (err) {
+          console.error(err);
+          showToast('No se pudo procesar el archivo Excel. Verifica que sea un .xlsx válido.', 'error');
+        } finally {
+          document.getElementById('tecnicos-bulk-input').value = '';
+        }
+      };
+      reader.onerror = function() {
+        showToast('Error al leer el archivo.', 'error');
+        document.getElementById('tecnicos-bulk-input').value = '';
+      };
+      reader.readAsArrayBuffer(file);
     }
 
     function updateTechCallmebotKey(id, val) {
