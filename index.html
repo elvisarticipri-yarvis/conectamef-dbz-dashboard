@@ -1092,6 +1092,7 @@
         <button class="btn-dbz btn-dbz-secondary" style="width: 100%;" onclick="enterAppLocalMode()">
           <i class="fa-solid fa-screwdriver-wrench"></i> Entrar en modo local (Control Total, sin Firebase)
         </button>
+        <p class="login-footer-note" style="margin-top: 10px;">¿Primera vez usando este dashboard? Entra en modo local y ve a la pestaña <strong>Usuarios</strong> para crear la primera cuenta real (con correo y contraseña). Desde ese momento, esa persona ya puede iniciar sesión desde cualquier otra computadora o red.</p>
       </div>
 
       <p class="login-footer-note">Roles disponibles: <strong>Control Total</strong> (acceso completo), <strong>Supervisión</strong> (gestión operativa) y <strong>Lectura</strong> (solo visualización).</p>
@@ -1445,9 +1446,14 @@
 
     <!-- TAB 8: USUARIOS -->
     <div id="tab-usuarios" class="tab-pane">
+      <div id="usuarios-hosting-note" class="role-banner-lectura" style="display:none; background: rgba(0, 229, 255, 0.1); border-color: rgba(0, 229, 255, 0.35); color: var(--dbz-blue);">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>Este dashboard todavía se está abriendo como archivo local, así que las cuentas que crees aquí solo podrán iniciar sesión en <strong>esta misma computadora</strong>. Para que alguien entre desde otra PC u otra red, primero hay que publicar este archivo en un hosting (GitHub Pages, Firebase Hosting, Netlify, etc.) y compartir esa dirección web.</span>
+      </div>
       <div style="display: grid; grid-template-columns: 350px 1fr; gap: 20px;">
         <div style="background: var(--bg-card); backdrop-filter: blur(8px); backdrop-filter: blur(8px); padding: 20px; border-radius: 10px; border: 1px solid rgba(156, 39, 176, 0.4);">
           <h3 style="font-family: 'Orbitron'; color: var(--dbz-yellow); margin-bottom: 15px;"><i class="fa-solid fa-user-shield"></i> Registrar Usuario</h3>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin: -8px 0 14px 0; line-height: 1.4;">Al guardar, se crea una cuenta real de acceso (correo + contraseña) con el rol elegido. Esa persona podrá iniciar sesión desde cualquier computadora que tenga la dirección web del dashboard.</p>
           <div class="form-group">
             <label>Nombre Completo</label>
             <input type="text" id="user-name" class="form-control" placeholder="Ej. Piccolo Namek">
@@ -1957,6 +1963,9 @@
       if (tabUsuarios) tabUsuarios.style.display = isControlTotal ? '' : 'none';
       if (tabConfig) tabConfig.style.display = isControlTotal ? '' : 'none';
       if (btnReset) btnReset.style.display = isControlTotal ? '' : 'none';
+
+      const hostingNote = document.getElementById('usuarios-hosting-note');
+      if (hostingNote) hostingNote.style.display = (location.protocol === 'file:') ? 'flex' : 'none';
 
       // Si el usuario que ingresó es Control Total, evitamos pedirle una
       // segunda contraseña para el panel de Configuración.
