@@ -1023,6 +1023,8 @@
     }
 
     .schedule-pill {
+      position: relative;
+      overflow: hidden;
       background: rgba(255, 111, 0, 0.15);
       border-left: 3px solid var(--dbz-orange);
       padding: 8px 10px;
@@ -1033,6 +1035,22 @@
       align-items: center;
       justify-content: space-between;
       gap: 6px;
+    }
+
+    .schedule-pill-bg-icon {
+      position: absolute;
+      right: -8px;
+      bottom: -12px;
+      font-size: 2.6rem;
+      opacity: 0.16;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .schedule-pill > div,
+    .schedule-pill > button {
+      position: relative;
+      z-index: 1;
     }
 
     .schedule-pill-btn {
@@ -1661,6 +1679,43 @@
       <div class="modal-footer">
         <button class="btn-dbz btn-dbz-secondary" onclick="closeModal('modal-edit')">Cancelar</button>
         <button class="btn-dbz" onclick="saveEditOit()"><i class="fa-solid fa-floppy-disk"></i> Actualizar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR TÉCNICO -->
+  <div class="modal-backdrop" id="modal-edit-tecnico">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-pen"></i> EDITAR TÉCNICO <span id="modal-tecnico-title" style="color: #fff;"></span></h3>
+        <i class="fa-solid fa-xmark" style="cursor: pointer; font-size: 1.2rem;" onclick="closeModal('modal-edit-tecnico')"></i>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-tech-id">
+        <div class="form-group">
+          <label>Nombre Completo</label>
+          <input type="text" id="edit-tech-name" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Celular / WhatsApp (Con código)</label>
+          <input type="text" id="edit-tech-phone" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <input type="email" id="edit-tech-email" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Departamento asignado <span style="color: var(--text-muted); font-weight: 400;">(Opcional)</span></label>
+          <input type="text" id="edit-tech-departamento" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>CallMeBot API Key <span style="color: var(--text-muted); font-weight: 400;">(WhatsApp)</span></label>
+          <input type="text" id="edit-tech-callmebot" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-dbz btn-dbz-secondary" onclick="closeModal('modal-edit-tecnico')">Cancelar</button>
+        <button class="btn-dbz" onclick="saveEditTecnico()"><i class="fa-solid fa-floppy-disk"></i> Actualizar</button>
       </div>
     </div>
   </div>
@@ -2342,6 +2397,14 @@
         const matchesSt = !st || item.estado === st;
         const matchesTech = !tech || item.tecnico === tech;
         return matchesQ && matchesDep && matchesSt && matchesTech;
+      }).sort((a, b) => {
+        // Ordenar por fecha agendada ascendente; las OITs sin fecha van al final.
+        const fa = a.fecha || '';
+        const fb = b.fecha || '';
+        if (!fa && !fb) return 0;
+        if (!fa) return 1;
+        if (!fb) return -1;
+        return fa.localeCompare(fb);
       });
     }
 
@@ -2453,6 +2516,30 @@
         case 'VENCIDO': return 'var(--dbz-red)';
         case 'STANDBY': return '#76ff03';
         default: return '#fff';
+      }
+    }
+
+    // Igual que getStatusColor pero en formato "r, g, b" para usar en rgba() (fondos translúcidos, etc.)
+    function getStatusRGB(st) {
+      switch(st) {
+        case 'COMPLETADO': return '0, 230, 118';
+        case 'EN PROCESO': return '156, 39, 176';
+        case 'PENDIENTE': return '255, 214, 0';
+        case 'VENCIDO': return '255, 23, 68';
+        case 'STANDBY': return '118, 255, 3';
+        default: return '255, 255, 255';
+      }
+    }
+
+    // Icono representativo de cada estado, usado como marca de fondo en las tarjetas de Programaciones
+    function getStatusIcon(st) {
+      switch(st) {
+        case 'COMPLETADO': return 'fa-solid fa-circle-check';
+        case 'EN PROCESO': return 'fa-solid fa-bolt';
+        case 'PENDIENTE': return 'fa-solid fa-clock';
+        case 'VENCIDO': return 'fa-solid fa-triangle-exclamation';
+        case 'STANDBY': return 'fa-solid fa-pause';
+        default: return 'fa-solid fa-circle-question';
       }
     }
 
@@ -2996,6 +3083,10 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       document.getElementById(tabId).classList.add('active');
       event.currentTarget.classList.add('active');
       if (tabId === 'tab-config') refreshConfigStatus();
+      // Programaciones se re-dibuja cada vez que se abre la pestaña, para reflejar
+      // de inmediato cualquier técnico/estado asignado desde la Tabla de Trabajos
+      // (antes solo se actualizaba al cambiar de semana).
+      if (tabId === 'tab-prog') renderSchedule();
     }
 
     // Render Sectorizacion
@@ -3043,7 +3134,8 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
             </td>
             <td><span class="badge-status" style="background: rgba(0, 229, 255, 0.2); color: var(--dbz-blue);">${assignedCount} OITs</span></td>
             <td>
-              <button class="btn-icon" style="color: var(--dbz-red);" onclick="deleteTechnician(${t.id})"><i class="fa-solid fa-trash"></i></button>
+              <button class="btn-icon btn-edit" title="Editar Técnico" onclick="openEditTecnicoModal(${t.id})"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon" style="color: var(--dbz-red);" title="Eliminar Técnico" onclick="deleteTechnician(${t.id})"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         `;
@@ -3190,6 +3282,61 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       }
     }
 
+    function openEditTecnicoModal(id) {
+      const t = tecnicos.find(t => t.id === id);
+      if (!t) return;
+      document.getElementById('edit-tech-id').value = t.id;
+      document.getElementById('modal-tecnico-title').innerText = `- ${t.nombre}`;
+      document.getElementById('edit-tech-name').value = t.nombre || '';
+      document.getElementById('edit-tech-phone').value = t.phone || '';
+      document.getElementById('edit-tech-email').value = t.email || '';
+      document.getElementById('edit-tech-departamento').value = t.departamento || '';
+      document.getElementById('edit-tech-callmebot').value = t.callmebotKey || '';
+      document.getElementById('modal-edit-tecnico').classList.add('show');
+    }
+
+    function saveEditTecnico() {
+      const id = parseInt(document.getElementById('edit-tech-id').value);
+      const t = tecnicos.find(t => t.id === id);
+      if (!t) return;
+      const nuevoNombre = document.getElementById('edit-tech-name').value.trim();
+      const nuevoPhone = document.getElementById('edit-tech-phone').value.trim();
+      if (!nuevoNombre || !nuevoPhone) {
+        showToast('Por favor completa el nombre y celular del técnico.', 'error');
+        return;
+      }
+      const nombreAnterior = t.nombre;
+      t.nombre = nuevoNombre;
+      t.phone = nuevoPhone;
+      t.email = document.getElementById('edit-tech-email').value.trim();
+      t.departamento = document.getElementById('edit-tech-departamento').value.trim();
+      t.callmebotKey = document.getElementById('edit-tech-callmebot').value.trim();
+
+      // Si el nombre cambió, propagar el nuevo nombre a todas las OITs que ya
+      // tenían asignado este técnico (las OITs guardan el nombre, no el id).
+      let oitsActualizadas = 0;
+      if (nombreAnterior && nombreAnterior !== t.nombre) {
+        oits.forEach(o => {
+          if (o.tecnico === nombreAnterior) {
+            o.tecnico = t.nombre;
+            oitsActualizadas++;
+          }
+        });
+        if (oitsActualizadas > 0) saveOits();
+      }
+
+      saveTecnicos();
+      closeModal('modal-edit-tecnico');
+      renderTecnicosTable();
+      renderTable();
+      renderSchedule();
+      if (typeof renderSectorizacion === 'function') renderSectorizacion();
+      if (typeof renderAlertasTable === 'function') renderAlertasTable();
+      showToast(oitsActualizadas > 0
+        ? `Técnico actualizado. Se actualizó el nombre en ${oitsActualizadas} OIT(s) asignadas.`
+        : 'Técnico actualizado con éxito.', 'success');
+    }
+
     // Deliverables Tab
     function renderEntregablesTable() {
       const tbody = document.getElementById('entregables-table-body');
@@ -3334,12 +3481,16 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
         } else {
           dayOits.forEach(o => {
             const tieneContenido = (o.comentarioProgramacion && o.comentarioProgramacion.trim() !== '') || (o.documentosProgramacion && o.documentosProgramacion.length > 0);
+            const estadoRGB = getStatusRGB(o.estado);
+            const estadoColor = getStatusColor(o.estado);
+            const estadoIcon = getStatusIcon(o.estado);
             cardsHtml += `
-              <div class="schedule-pill">
+              <div class="schedule-pill" style="background: rgba(${estadoRGB}, 0.16); border-left: 3px solid ${estadoColor};">
+                <i class="${estadoIcon} schedule-pill-bg-icon" style="color: ${estadoColor};"></i>
                 <div>
                   <strong>${o.oit}</strong> - ${o.departamento}<br>
                   <span style="font-size: 0.75rem; color: var(--text-muted);">${o.tecnico || 'Sin técnico'}</span><br>
-                  <span class="badge-status" style="background: rgba(255,255,255,0.1); color: ${getStatusColor(o.estado)}; font-size: 0.62rem; padding: 2px 7px; margin-top: 3px;">${o.estado || 'PENDIENTE'}</span>
+                  <span class="badge-status" style="background: rgba(${estadoRGB}, 0.25); color: ${estadoColor}; font-size: 0.62rem; padding: 2px 7px; margin-top: 3px;">${o.estado || 'PENDIENTE'}</span>
                 </div>
                 <button class="schedule-pill-btn ${tieneContenido ? 'has-content' : ''}" title="Documentos y comentario para el técnico" onclick="abrirProgramacionDocsModal(${o.id})">
                   <i class="fa-solid fa-paperclip"></i>
