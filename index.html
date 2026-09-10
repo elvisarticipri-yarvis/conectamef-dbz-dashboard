@@ -570,6 +570,30 @@
       display: inline-block;
     }
 
+    /* Campos deshabilitados para OITs que no requieren Guías/Entregables
+       (ej. Arrendamiento Equipos) */
+    .no-aplica-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+    }
+
+    .badge-no-aplica {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      white-space: nowrap;
+    }
+
     /* GUIA DE INSTALACION INPUTS */
     .guia-instalacion-group {
       display: flex;
@@ -1859,13 +1883,24 @@
       }
     }
 
+    // Compatibilidad con cuentas antiguas: versiones previas del dashboard
+    // guardaban los roles como 'Administrador' / 'Supervisor'. Normalizamos
+    // esos valores a los nombres actuales para que esas cuentas no pierdan
+    // acceso a Usuarios/Configuración solo por el cambio de nombre.
+    function normalizarRol(rol) {
+      const r = (rol || '').trim();
+      if (r === 'Administrador' || r === 'Control Total') return 'Control Total';
+      if (r === 'Supervisor' || r === 'Supervisión' || r === 'Supervision') return 'Supervisión';
+      return 'Lectura';
+    }
+
     async function resolveUserRoleAndEnter(fbUser) {
       let rol = 'Lectura';
       let nombre = fbUser.email;
       try {
         const doc = await fbDb.collection('usuarios').doc(fbUser.uid).get();
         if (doc.exists) {
-          rol = doc.data().rol || 'Lectura';
+          rol = normalizarRol(doc.data().rol);
           nombre = doc.data().nombre || fbUser.email;
         } else {
           showToast('Tu cuenta no tiene un rol asignado todavía. Se te dio acceso de Lectura por defecto; pide a un Control Total que te registre en la pestaña Usuarios.', 'warn');
@@ -2081,7 +2116,7 @@
       try {
         const cred = await fbAuth.signInWithEmailAndPassword(email, pass);
         const userDoc = await fbDb.collection('usuarios').doc(cred.user.uid).get();
-        const rol = userDoc.exists ? userDoc.data().rol : null;
+        const rol = userDoc.exists ? normalizarRol(userDoc.data().rol) : null;
         if (rol !== 'Control Total') {
           msg.innerHTML = '<span class="config-status-bad">Esta cuenta no tiene rol de Control Total.</span>';
           await fbAuth.signOut();
@@ -2323,9 +2358,22 @@
       const paginated = filtered.slice(start, start + pageSize);
 
       paginated.forEach((row, idx) => {
+        // Las OITs de "Arrendamiento Equipos" no requieren Guías ni Entregables
+        // (Acta/Guía/Informe): esos campos se muestran deshabilitados.
+        const sinEntregables = row.servicio === 'Arrendamiento Equipos';
+
         // Calculate deliverables pct
         let count = (row.acta ? 1 : 0) + (row.guia ? 1 : 0) + (row.informe ? 1 : 0);
         let pct = Math.round((count / 3) * 100);
+
+        const celdaGuia = (nro, codigo, tipo, fieldPrefix) => sinEntregables
+          ? `<div class="guia-instalacion-group no-aplica-cell" title="No aplica para Arrendamiento de Equipos">
+               <span class="badge-no-aplica"><i class="fa-solid fa-ban"></i> No aplica</span>
+             </div>`
+          : `<div class="guia-instalacion-group">
+               <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${nro || ''}" onchange="updateGuiaInfo(${row.id}, '${tipo}', '${fieldPrefix}_nro', this.value)">
+               <input type="text" class="input-guia-mini" placeholder="Código" value="${codigo || ''}" onchange="updateGuiaInfo(${row.id}, '${tipo}', '${fieldPrefix}_codigo', this.value)">
+             </div>`;
 
         // Tech options
         let techOptions = `<option value="">-- Sin Asignar --</option>`;
@@ -2360,25 +2408,15 @@
               ${statusOptions}
             </select>
           </td>
-          <td>
-            <div class="guia-instalacion-group">
-              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_teldat_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'teldat', 'guia_teldat_nro', this.value)">
-              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_teldat_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'teldat', 'guia_teldat_codigo', this.value)">
-            </div>
-          </td>
-          <td>
-            <div class="guia-instalacion-group">
-              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_netskope_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'netskope', 'guia_netskope_nro', this.value)">
-              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_netskope_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'netskope', 'guia_netskope_codigo', this.value)">
-            </div>
-          </td>
-          <td>
-            <div class="guia-instalacion-group">
-              <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_desinst_nro || ''}" onchange="updateGuiaInfo(${row.id}, 'desinstalacion', 'guia_desinst_nro', this.value)">
-              <input type="text" class="input-guia-mini" placeholder="Código" value="${row.guia_desinst_codigo || ''}" onchange="updateGuiaInfo(${row.id}, 'desinstalacion', 'guia_desinst_codigo', this.value)">
-            </div>
-          </td>
+          <td>${celdaGuia(row.guia_teldat_nro, row.guia_teldat_codigo, 'teldat', 'guia_teldat')}</td>
+          <td>${celdaGuia(row.guia_netskope_nro, row.guia_netskope_codigo, 'netskope', 'guia_netskope')}</td>
+          <td>${celdaGuia(row.guia_desinst_nro, row.guia_desinst_codigo, 'desinstalacion', 'guia_desinst')}</td>
           <td class="deliverables-box">
+            ${sinEntregables ? `
+            <div class="no-aplica-cell" title="No aplica para Arrendamiento de Equipos">
+              <span class="badge-no-aplica"><i class="fa-solid fa-ban"></i> No aplica</span>
+            </div>
+            ` : `
             <div class="deliverables-checks">
               <label><input type="checkbox" ${row.acta ? 'checked' : ''} onchange="toggleDeliverable(${row.id}, 'acta', this.checked)"> Acta</label>
               <label><input type="checkbox" ${row.guia ? 'checked' : ''} onchange="toggleDeliverable(${row.id}, 'guia', this.checked)"> Guía</label>
@@ -2388,6 +2426,7 @@
               <div class="progress-bar-fill" style="width: ${pct}%;"></div>
             </div>
             <div class="progress-pct-text">${pct}%</div>
+            `}
           </td>
           <td style="text-align: center;">
             <div class="action-btn-group">
@@ -2671,6 +2710,7 @@ Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + li
     function toggleDeliverable(id, field, checked) {
       const item = oits.find(o => o.id === id);
       if (item) {
+        if (item.servicio === 'Arrendamiento Equipos') return; // no aplica
         item[field] = checked;
         saveOits();
         renderTable();
@@ -2685,6 +2725,7 @@ Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + li
     function updateGuiaInfo(id, tipo, field, val) {
       const item = oits.find(o => o.id === id);
       if (!item) return;
+      if (item.servicio === 'Arrendamiento Equipos') return; // no aplica
       item[field] = val;
 
       const camposPorTipo = {
@@ -3156,13 +3197,28 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       let c100 = 0, fActa = 0, fGuia = 0, fInf = 0;
 
       oits.forEach(row => {
+        // Arrendamiento Equipos no requiere Acta/Guía/Informe: se excluye de
+        // los contadores "Faltan..." y "100% Completos" para no distorsionarlos.
+        const sinEntregables = row.servicio === 'Arrendamiento Equipos';
         let count = (row.acta ? 1 : 0) + (row.guia ? 1 : 0) + (row.informe ? 1 : 0);
         let pct = Math.round((count / 3) * 100);
 
-        if (pct === 100) c100++;
-        if (!row.acta) fActa++;
-        if (!row.guia) fGuia++;
-        if (!row.informe) fInf++;
+        if (!sinEntregables) {
+          if (pct === 100) c100++;
+          if (!row.acta) fActa++;
+          if (!row.guia) fGuia++;
+          if (!row.informe) fInf++;
+        }
+
+        const noAplicaBadge = '<span class="badge-no-aplica" style="font-size: 0.65rem;">No aplica</span>';
+        const celdaActa = sinEntregables ? noAplicaBadge : (row.acta ? '<i class="fa-solid fa-circle-check" style="color: var(--dbz-green);"></i>' : '<i class="fa-solid fa-circle-xmark" style="color: var(--dbz-red);"></i>');
+        const celdaGuiaEntreg = sinEntregables ? noAplicaBadge : (row.guia ? '<i class="fa-solid fa-circle-check" style="color: var(--dbz-green);"></i>' : '<i class="fa-solid fa-circle-xmark" style="color: var(--dbz-red);"></i>');
+        const celdaInforme = sinEntregables ? noAplicaBadge : (row.informe ? '<i class="fa-solid fa-circle-check" style="color: var(--dbz-green);"></i>' : '<i class="fa-solid fa-circle-xmark" style="color: var(--dbz-red);"></i>');
+        const celdaProgreso = sinEntregables ? noAplicaBadge : `
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: ${pct}%;"></div>
+              </div>
+              <div class="progress-pct-text">${pct}%</div>`;
 
         tbody.innerHTML += `
           <tr>
@@ -3170,15 +3226,10 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
             <td>${row.sede}</td>
             <td>${row.departamento}</td>
             <td>${row.tecnico || '<span style="color: var(--text-muted);">Sin asignar</span>'}</td>
-            <td>${row.acta ? '<i class="fa-solid fa-circle-check" style="color: var(--dbz-green);"></i>' : '<i class="fa-solid fa-circle-xmark" style="color: var(--dbz-red);"></i>'}</td>
-            <td>${row.guia ? '<i class="fa-solid fa-circle-check" style="color: var(--dbz-green);"></i>' : '<i class="fa-solid fa-circle-xmark" style="color: var(--dbz-red);"></i>'}</td>
-            <td>${row.informe ? '<i class="fa-solid fa-circle-check" style="color: var(--dbz-green);"></i>' : '<i class="fa-solid fa-circle-xmark" style="color: var(--dbz-red);"></i>'}</td>
-            <td style="min-width: 140px;">
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: ${pct}%;"></div>
-              </div>
-              <div class="progress-pct-text">${pct}%</div>
-            </td>
+            <td>${celdaActa}</td>
+            <td>${celdaGuiaEntreg}</td>
+            <td>${celdaInforme}</td>
+            <td style="min-width: 140px;">${celdaProgreso}</td>
             <td><span class="badge-status" style="background: rgba(255,255,255,0.1); color: ${getStatusColor(row.estado)};">${row.estado}</span></td>
             <td style="text-align:center;">
               <button class="btn-icon" title="${row.comentario ? 'Ver / editar comentario' : 'Agregar comentario'}" onclick="abrirComentarioModal(${row.id})">
@@ -3273,7 +3324,7 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
           <tr>
             <td><strong>${u.nombre}</strong></td>
             <td>${u.email}</td>
-            <td><span class="badge-status" style="background: rgba(156,39,176,0.2); color: var(--dbz-purple);">${u.rol}</span></td>
+            <td><span class="badge-status" style="background: rgba(156,39,176,0.2); color: var(--dbz-purple);">${normalizarRol(u.rol)}</span></td>
             <td><span style="color: var(--dbz-green);"><i class="fa-solid fa-circle-dot"></i> ${u.estado}</span></td>
             <td>
               <button class="btn-icon" style="color: var(--dbz-red);" onclick="deleteUser(${u.id})"><i class="fa-solid fa-trash"></i></button>
