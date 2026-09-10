@@ -999,7 +999,7 @@
 
     .week-days-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 14px;
       margin-bottom: 20px;
     }
@@ -1405,7 +1405,7 @@
     <div id="tab-prog" class="tab-pane">
       <div class="week-nav">
         <button class="btn-dbz btn-dbz-secondary view-safe" onclick="changeWeek(-1)"><i class="fa-solid fa-chevron-left"></i> Semana anterior</button>
-        <h3 style="font-family: 'Orbitron'; color: var(--dbz-yellow);" id="week-display-title">Semana: 07 Septiembre - 13 Septiembre 2026</h3>
+        <h3 style="font-family: 'Orbitron'; color: var(--dbz-yellow);" id="week-display-title">Cargando semana...</h3>
         <button class="btn-dbz btn-dbz-secondary view-safe" onclick="changeWeek(1)">Semana siguiente <i class="fa-solid fa-chevron-right"></i></button>
       </div>
       <div class="week-days-grid" id="week-calendar-grid">
@@ -1768,6 +1768,7 @@
 
     const DATA_VERSION = 'v8_cronograma_cliente_2026';
     let savedVersion = localStorage.getItem('conectamef_db_ver');
+    let scheduleWeekStart = null; // Lunes de la semana actualmente visible en la pestaña Programaciones
     let oits;
     if (savedVersion !== DATA_VERSION) {
       oits = initialOits;
@@ -3268,17 +3269,62 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
     }
 
     // Schedule Tab
+    function parseFechaYMD(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function formatFechaYMD(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getMondayOf(dateObj) {
+      const d = new Date(dateObj);
+      const day = d.getDay(); // 0=Dom ... 6=Sáb
+      const diff = (day === 0 ? -6 : 1 - day);
+      d.setDate(d.getDate() + diff);
+      return d;
+    }
+
+    const DIAS_ABBR_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const MESES_ABBR_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
+
     function renderSchedule() {
       const grid = document.getElementById('week-calendar-grid');
       grid.innerHTML = '';
-      // Solo Lunes a Viernes (sin fin de semana).
-      const days = [
-        { name: 'Lun 07 Set', date: '2026-09-07' },
-        { name: 'Mar 08 Set', date: '2026-09-08' },
-        { name: 'Mié 09 Set', date: '2026-09-09' },
-        { name: 'Jue 10 Set', date: '2026-09-10' },
-        { name: 'Vie 11 Set', date: '2026-09-11' }
-      ];
+
+      // Inicializar la semana visible según la fecha más temprana registrada en las OITs
+      // (o la semana actual si no hay datos todavía). Esto evita que la agenda quede
+      // fija en una semana vieja mientras las fechas reales de las OITs cambian.
+      if (!scheduleWeekStart) {
+        const fechasValidas = oits.map(o => o.fecha).filter(f => f && /^\d{4}-\d{2}-\d{2}$/.test(f)).sort();
+        const fechaBase = fechasValidas.length > 0 ? parseFechaYMD(fechasValidas[0]) : new Date();
+        scheduleWeekStart = getMondayOf(fechaBase);
+      }
+
+      // Semana completa (Lun-Dom) para no ocultar OITs agendadas en fin de semana.
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(scheduleWeekStart);
+        d.setDate(d.getDate() + i);
+        const dateStr = formatFechaYMD(d);
+        const name = `${DIAS_ABBR_SEMANA[d.getDay()]} ${String(d.getDate()).padStart(2, '0')} ${MESES_ABBR_ES[d.getMonth()]}`;
+        days.push({ name, date: dateStr });
+      }
+
+      const tituloEl = document.getElementById('week-display-title');
+      if (tituloEl) {
+        const inicioObj = parseFechaYMD(days[0].date);
+        const finObj = parseFechaYMD(days[6].date);
+        if (inicioObj.getMonth() === finObj.getMonth()) {
+          tituloEl.textContent = `Semana: ${String(inicioObj.getDate()).padStart(2, '0')} - ${String(finObj.getDate()).padStart(2, '0')} ${MESES_ABBR_ES[finObj.getMonth()]} ${finObj.getFullYear()}`;
+        } else {
+          tituloEl.textContent = `Semana: ${String(inicioObj.getDate()).padStart(2, '0')} ${MESES_ABBR_ES[inicioObj.getMonth()]} - ${String(finObj.getDate()).padStart(2, '0')} ${MESES_ABBR_ES[finObj.getMonth()]} ${finObj.getFullYear()}`;
+        }
+      }
 
       days.forEach(d => {
         const dayOits = oits.filter(o => o.fecha === d.date);
@@ -3292,7 +3338,8 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
               <div class="schedule-pill">
                 <div>
                   <strong>${o.oit}</strong> - ${o.departamento}<br>
-                  <span style="font-size: 0.75rem; color: var(--text-muted);">${o.tecnico || 'Sin técnico'}</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">${o.tecnico || 'Sin técnico'}</span><br>
+                  <span class="badge-status" style="background: rgba(255,255,255,0.1); color: ${getStatusColor(o.estado)}; font-size: 0.62rem; padding: 2px 7px; margin-top: 3px;">${o.estado || 'PENDIENTE'}</span>
                 </div>
                 <button class="schedule-pill-btn ${tieneContenido ? 'has-content' : ''}" title="Documentos y comentario para el técnico" onclick="abrirProgramacionDocsModal(${o.id})">
                   <i class="fa-solid fa-paperclip"></i>
@@ -3312,7 +3359,11 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
     }
 
     function changeWeek(dir) {
-      alert(dir > 0 ? 'Cargando siguiente ciclo de agendamiento...' : 'Cargando ciclo anterior...');
+      if (!scheduleWeekStart) {
+        renderSchedule(); // asegura que la semana esté inicializada antes de moverla
+      }
+      scheduleWeekStart.setDate(scheduleWeekStart.getDate() + (dir * 7));
+      renderSchedule();
     }
 
     // Users CRUD
