@@ -3589,7 +3589,7 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       // (o la semana actual si no hay datos todavía). Esto evita que la agenda quede
       // fija en una semana vieja mientras las fechas reales de las OITs cambian.
       if (!scheduleWeekStart) {
-        const fechasValidas = oits.map(o => o.fecha).filter(f => f && /^\d{4}-\d{2}-\d{2}$/.test(f)).sort();
+        const fechasValidas = oits.filter(o => o.servicio === 'Enlace de Datos').map(o => o.fecha).filter(f => f && /^\d{4}-\d{2}-\d{2}$/.test(f)).sort();
         const fechaBase = fechasValidas.length > 0 ? parseFechaYMD(fechasValidas[0]) : new Date();
         scheduleWeekStart = getMondayOf(fechaBase);
       }
@@ -3616,7 +3616,9 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       }
 
       days.forEach(d => {
-        const dayOits = oits.filter(o => o.fecha === d.date);
+        // Programaciones solo muestra OITs de servicio "Enlace de Datos" (las de
+        // "Arrendamiento Equipos" u otros servicios no requieren agendamiento aquí).
+        const dayOits = oits.filter(o => o.fecha === d.date && o.servicio === 'Enlace de Datos');
         let cardsHtml = '';
         if (dayOits.length === 0) {
           cardsHtml = '<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 30px;">Sin OITs</div>';
