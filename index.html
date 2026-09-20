@@ -3227,8 +3227,13 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       if (tabId === 'tab-config') refreshConfigStatus();
       // Programaciones se re-dibuja cada vez que se abre la pestaña, para reflejar
       // de inmediato cualquier técnico/estado asignado desde la Tabla de Trabajos
-      // (antes solo se actualizaba al cambiar de semana).
-      if (tabId === 'tab-prog') renderSchedule();
+      // (antes solo se actualizaba al cambiar de semana). Además, cada vez que se
+      // ingresa a la pestaña se reinicia a la semana ACTUAL (aunque el usuario haya
+      // navegado a otra semana en una visita anterior dentro de la misma sesión).
+      if (tabId === 'tab-prog') {
+        scheduleWeekStart = getMondayOf(new Date());
+        renderSchedule();
+      }
     }
 
     // Render Sectorizacion
@@ -3585,13 +3590,11 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
       const grid = document.getElementById('week-calendar-grid');
       grid.innerHTML = '';
 
-      // Inicializar la semana visible según la fecha más temprana registrada en las OITs
-      // (o la semana actual si no hay datos todavía). Esto evita que la agenda quede
-      // fija en una semana vieja mientras las fechas reales de las OITs cambian.
+      // Al entrar a la pestaña, siempre se muestra la semana ACTUAL (según la fecha real
+      // de hoy), sin importar las fechas agendadas de las OITs. Desde ahí el usuario puede
+      // navegar con "Semana anterior/siguiente" para ver otras semanas.
       if (!scheduleWeekStart) {
-        const fechasValidas = oits.filter(o => o.servicio === 'Enlace de Datos').map(o => o.fecha).filter(f => f && /^\d{4}-\d{2}-\d{2}$/.test(f)).sort();
-        const fechaBase = fechasValidas.length > 0 ? parseFechaYMD(fechasValidas[0]) : new Date();
-        scheduleWeekStart = getMondayOf(fechaBase);
+        scheduleWeekStart = getMondayOf(new Date());
       }
 
       // Semana completa (Lun-Dom) para no ocultar OITs agendadas en fin de semana.
