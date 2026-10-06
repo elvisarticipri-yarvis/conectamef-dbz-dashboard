@@ -517,10 +517,10 @@
       font-size: 0.88rem;
     }
 
-    /* La tabla principal ahora tiene 3 columnas de Guía (TELDAT / NETSKOPE /
-       Desinstalación) en vez de 1, y una columna de Cliente, necesita más ancho mínimo. */
+    /* La tabla principal tiene una columna de Cliente y una sola columna de
+       "Guías de Instalación" (Nro. de Guía + código de 3 equipos fijos). */
     #main-table {
-      min-width: 2300px;
+      min-width: 2100px;
     }
 
     th {
@@ -599,7 +599,28 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
-      min-width: 120px;
+      min-width: 230px;
+    }
+
+    /* Cada equipo fijo (ROUTER TELDAT ATLAS-840D, SWITCH TELDAT 10GE2MS-E,
+       NETSKOPE-NK-NSG-2000) muestra su nombre como texto fijo y solo pide el código. */
+    .equipo-codigo-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .equipo-nombre-fijo {
+      flex: 1;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      line-height: 1.2;
+      white-space: normal;
+    }
+
+    .equipo-codigo-row .input-guia-mini {
+      width: 90px;
+      flex-shrink: 0;
     }
 
     .input-guia-mini {
@@ -1287,9 +1308,7 @@
               <th>Fecha Agendada</th>
               <th>Técnico Asignado</th>
               <th>Estado</th>
-              <th>Guía de Instalación TELDAT</th>
-              <th>Guía de Instalación NETSKOPE</th>
-              <th>Guía de Desinstalación</th>
+              <th>Guías de Instalación</th>
               <th>Entregables</th>
               <th style="text-align: center;">Acciones</th>
             </tr>
@@ -1853,21 +1872,28 @@
       oits = JSON.parse(localStorage.getItem('conectamef_oits_v2')) || initialOits;
     }
 
-    // Migración: la "Guía de Instalación" antigua (un solo campo) ahora se
-    // divide en 3 (TELDAT / NETSKOPE / Desinstalación). Se conserva lo que
-    // ya estaba cargado como Guía TELDAT y se calculan los flags de avance.
+    // Migración: el modelo de "Guía de Instalación" cambió de 3 guías separadas
+    // (TELDAT / NETSKOPE / Desinstalación, cada una con Nro + Código) a UNA sola
+    // Guía de Instalación con 3 equipos de nombre fijo (ROUTER TELDAT ATLAS-840D,
+    // SWITCH TELDAT 10GE2MS-E, NETSKOPE-NK-NSG-2000), cada uno solo con su código.
+    // Si una OIT ya tenía datos cargados con el modelo anterior, se trasladan lo
+    // mejor posible (Guía/Código TELDAT -> Guía + Código del Router TELDAT; Código
+    // NETSKOPE -> Código del equipo NETSKOPE) para no perder esa información.
     oits.forEach(o => {
-      if (o.guia_nro !== undefined && o.guia_teldat_nro === undefined) o.guia_teldat_nro = o.guia_nro;
-      if (o.guia_codigo !== undefined && o.guia_teldat_codigo === undefined) o.guia_teldat_codigo = o.guia_codigo;
-      if (o.completo_teldat === undefined) {
-        o.completo_teldat = !!((o.guia_teldat_nro || '').trim() && (o.guia_teldat_codigo || '').trim());
+      if (o.guia_instalacion_nro === undefined) {
+        const teniaDatosAntiguos = (o.guia_teldat_nro || '').trim() !== '' || (o.guia_teldat_codigo || '').trim() !== '';
+        o.guia_instalacion_nro = teniaDatosAntiguos ? (o.guia_teldat_nro || '') : '';
+        o.cod_router_teldat = teniaDatosAntiguos ? (o.guia_teldat_codigo || '') : '';
+        o.cod_switch_teldat = o.cod_switch_teldat || '';
+        o.cod_netskope = (o.guia_netskope_codigo || '').trim() !== '' ? o.guia_netskope_codigo : '';
       }
-      if (o.completo_netskope === undefined) {
-        o.completo_netskope = !!((o.guia_netskope_nro || '').trim() && (o.guia_netskope_codigo || '').trim());
-      }
-      if (o.completo_desinstalacion === undefined) {
-        o.completo_desinstalacion = !!((o.guia_desinst_nro || '').trim() && (o.guia_desinst_codigo || '').trim());
-      }
+      o.completo_guia_instalacion = !!(
+        (o.guia_instalacion_nro || '').trim() &&
+        (o.cod_router_teldat || '').trim() &&
+        (o.cod_switch_teldat || '').trim() &&
+        (o.cod_netskope || '').trim()
+      );
+      o.guia = o.completo_guia_instalacion;
     });
 
     // Migración de fechas (Excel "FECHAS - CONECTAMEF_2026.xlsx", 104 de las 112 OITs
@@ -2512,13 +2538,24 @@
         let count = (row.acta ? 1 : 0) + (row.guia ? 1 : 0) + (row.informe ? 1 : 0);
         let pct = Math.round((count / 3) * 100);
 
-        const celdaGuia = (nro, codigo, tipo, fieldPrefix) => sinEntregables
+        const celdaGuiaInstalacion = () => sinEntregables
           ? `<div class="guia-instalacion-group no-aplica-cell" title="No aplica para Arrendamiento de Equipos">
                <span class="badge-no-aplica"><i class="fa-solid fa-ban"></i> No aplica</span>
              </div>`
           : `<div class="guia-instalacion-group">
-               <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${nro || ''}" onchange="updateGuiaInfo(${row.id}, '${tipo}', '${fieldPrefix}_nro', this.value)">
-               <input type="text" class="input-guia-mini" placeholder="Código" value="${codigo || ''}" onchange="updateGuiaInfo(${row.id}, '${tipo}', '${fieldPrefix}_codigo', this.value)">
+               <input type="text" class="input-guia-mini" placeholder="Nro. de Guía" value="${row.guia_instalacion_nro || ''}" onchange="updateGuiaInstalacion(${row.id}, 'guia_instalacion_nro', this.value)">
+               <div class="equipo-codigo-row">
+                 <span class="equipo-nombre-fijo">ROUTER TELDAT ATLAS-840D</span>
+                 <input type="text" class="input-guia-mini" placeholder="Código" value="${row.cod_router_teldat || ''}" onchange="updateGuiaInstalacion(${row.id}, 'cod_router_teldat', this.value)">
+               </div>
+               <div class="equipo-codigo-row">
+                 <span class="equipo-nombre-fijo">SWITCH TELDAT 10GE2MS-E</span>
+                 <input type="text" class="input-guia-mini" placeholder="Código" value="${row.cod_switch_teldat || ''}" onchange="updateGuiaInstalacion(${row.id}, 'cod_switch_teldat', this.value)">
+               </div>
+               <div class="equipo-codigo-row">
+                 <span class="equipo-nombre-fijo">NETSKOPE-NK-NSG-2000</span>
+                 <input type="text" class="input-guia-mini" placeholder="Código" value="${row.cod_netskope || ''}" onchange="updateGuiaInstalacion(${row.id}, 'cod_netskope', this.value)">
+               </div>
              </div>`;
 
         // Tech options
@@ -2554,9 +2591,7 @@
               ${statusOptions}
             </select>
           </td>
-          <td>${celdaGuia(row.guia_teldat_nro, row.guia_teldat_codigo, 'teldat', 'guia_teldat')}</td>
-          <td>${celdaGuia(row.guia_netskope_nro, row.guia_netskope_codigo, 'netskope', 'guia_netskope')}</td>
-          <td>${celdaGuia(row.guia_desinst_nro, row.guia_desinst_codigo, 'desinstalacion', 'guia_desinst')}</td>
+          <td>${celdaGuiaInstalacion()}</td>
           <td class="deliverables-box">
             ${sinEntregables ? `
             <div class="no-aplica-cell" title="No aplica para Arrendamiento de Equipos">
@@ -2868,13 +2903,40 @@ Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + li
       }
     }
 
+    // OIT "pareja": cada sitio agenda 2 visitas (una de "Enlace de Datos" y una de
+    // "Arrendamiento Equipos") que llegaron como un par consecutivo de ids en la
+    // base (id impar junto a id+1, o id par junto a id-1) — verificado para las
+    // 112 OITs. Se usa para auto-completar el Arrendamiento Equipos de un sitio
+    // cuando se completa su Enlace de Datos (ver updateRowStatus()).
+    function obtenerOitPareja(item) {
+      if (!item) return null;
+      const parId = (item.id % 2 === 1) ? item.id + 1 : item.id - 1;
+      return oits.find(o => o.id === parId) || null;
+    }
+
     function updateRowStatus(id, val) {
       const item = oits.find(o => o.id === id);
       if (item) {
         item.estado = val;
+
+        // Al completar una OIT de "Enlace de Datos", su pareja de "Arrendamiento
+        // Equipos" del mismo sitio se marca COMPLETADO automáticamente (no aplica
+        // al revés: completar el Arrendamiento Equipos no afecta al Enlace de Datos).
+        let parejaCompletada = null;
+        if (val === 'COMPLETADO' && item.servicio === 'Enlace de Datos') {
+          const pareja = obtenerOitPareja(item);
+          if (pareja && pareja.servicio === 'Arrendamiento Equipos' && pareja.estado !== 'COMPLETADO') {
+            pareja.estado = 'COMPLETADO';
+            parejaCompletada = pareja;
+          }
+        }
+
         saveOits();
         renderTable();
         renderAlertasTable();
+        if (parejaCompletada) {
+          showToast(`✅ ${item.oit} completada. Su OIT pareja de Arrendamiento Equipos (${parejaCompletada.oit}) también se marcó COMPLETADO automáticamente.`, 'success');
+        }
       }
     }
 
@@ -2889,29 +2951,23 @@ Horario: ${item.horario || 'Por definir'}${linkUbicacion ? '\nUbicación: ' + li
       }
     }
 
-    // Guia de Instalacion (Nro. de Guia + Codigo) -> auto-marca el entregable "Guia"
-    // tipo: 'teldat' | 'netskope' | 'desinstalacion'. El entregable "Guía" del
-    // resumen (Entregables) se marca completo cuando las 3 guías tienen su
-    // Nro. y Código llenados.
-    function updateGuiaInfo(id, tipo, field, val) {
+    // Guía de Instalación: UNA sola guía (guia_instalacion_nro) + código de 3
+    // equipos de nombre fijo (cod_router_teldat, cod_switch_teldat, cod_netskope).
+    // El entregable "Guía" del resumen (Entregables) se marca completo cuando la
+    // Guía y los 3 códigos están llenados.
+    function updateGuiaInstalacion(id, field, val) {
       const item = oits.find(o => o.id === id);
       if (!item) return;
       if (item.servicio === 'Arrendamiento Equipos') return; // no aplica
       item[field] = val;
 
-      const camposPorTipo = {
-        teldat: ['guia_teldat_nro', 'guia_teldat_codigo'],
-        netskope: ['guia_netskope_nro', 'guia_netskope_codigo'],
-        desinstalacion: ['guia_desinst_nro', 'guia_desinst_codigo']
-      };
-      const campos = camposPorTipo[tipo];
-      if (campos) {
-        const nro = (item[campos[0]] || '').trim();
-        const codigo = (item[campos[1]] || '').trim();
-        item['completo_' + tipo] = (nro !== '' && codigo !== '');
-      }
-
-      item.guia = !!(item.completo_teldat && item.completo_netskope && item.completo_desinstalacion);
+      item.completo_guia_instalacion = !!(
+        (item.guia_instalacion_nro || '').trim() &&
+        (item.cod_router_teldat || '').trim() &&
+        (item.cod_switch_teldat || '').trim() &&
+        (item.cod_netskope || '').trim()
+      );
+      item.guia = item.completo_guia_instalacion;
 
       saveOits();
       renderTable();
@@ -3794,9 +3850,9 @@ Coordenadas: ${row.coordenadas || 'N/A'}`;
 
     // Export CSV
     function exportToCSV() {
-      let csv = "ID,Sede,Cliente,Tipo,OIT,Servicio,Direccion,Departamento,Provincia,Distrito,Coordenadas,Fecha,Tecnico,Estado,Nro Guia TELDAT,Codigo Guia TELDAT,Nro Guia NETSKOPE,Codigo Guia NETSKOPE,Nro Guia Desinstalacion,Codigo Guia Desinstalacion,Acta,Guia,Informe,Comentario\n";
+      let csv = "ID,Sede,Cliente,Tipo,OIT,Servicio,Direccion,Departamento,Provincia,Distrito,Coordenadas,Fecha,Tecnico,Estado,Nro Guia Instalacion,Codigo Router Teldat ATLAS-840D,Codigo Switch Teldat 10GE2MS-E,Codigo Netskope NK-NSG-2000,Acta,Guia,Informe,Comentario\n";
       oits.forEach(r => {
-        csv += `"${r.id}","${r.sede}","${r.cliente || ''}","${r.tipo}","${r.oit}","${r.servicio}","${r.direccion}","${r.departamento}","${r.provincia}","${r.distrito}","${r.coordenadas}","${r.fecha}","${r.tecnico}","${r.estado}","${r.guia_teldat_nro || ''}","${r.guia_teldat_codigo || ''}","${r.guia_netskope_nro || ''}","${r.guia_netskope_codigo || ''}","${r.guia_desinst_nro || ''}","${r.guia_desinst_codigo || ''}","${r.acta}","${r.guia}","${r.informe}","${(r.comentario || '').replace(/"/g, '""')}"\n`;
+        csv += `"${r.id}","${r.sede}","${r.cliente || ''}","${r.tipo}","${r.oit}","${r.servicio}","${r.direccion}","${r.departamento}","${r.provincia}","${r.distrito}","${r.coordenadas}","${r.fecha}","${r.tecnico}","${r.estado}","${r.guia_instalacion_nro || ''}","${r.cod_router_teldat || ''}","${r.cod_switch_teldat || ''}","${r.cod_netskope || ''}","${r.acta}","${r.guia}","${r.informe}","${(r.comentario || '').replace(/"/g, '""')}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
